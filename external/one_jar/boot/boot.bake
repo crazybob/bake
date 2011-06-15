@@ -4,4 +4,4 @@
 @bake.Java(
   jars = { "one-jar-boot-0.97.jar" },
   license = bake.License.BSD
-) package external.one_jar.boot;
+) module external.one_jar.boot;

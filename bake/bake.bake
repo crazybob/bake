@@ -14,4 +14,4 @@
         "external.one_jar.boot"
     },
     mainClass = "bake.tool.Main"
-) package bake;
+) module bake;

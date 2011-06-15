@@ -8,39 +8,18 @@ import com.google.common.io.ByteStreams;
 import com.google.inject.Injector;
 import com.simontuffs.onejar.JarClassLoader;
 import com.sun.source.util.JavacTask;
+import com.sun.tools.javac.parser.Token;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.NestingKind;
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.*;
 import javax.lang.model.util.Elements;
-import javax.tools.ForwardingJavaFileManager;
-import javax.tools.ForwardingJavaFileObject;
-import javax.tools.JavaCompiler;
-import javax.tools.JavaFileManager;
-import javax.tools.JavaFileObject;
-import javax.tools.StandardJavaFileManager;
-import javax.tools.StandardLocation;
-import javax.tools.ToolProvider;
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.io.Writer;
+import javax.tools.*;
+import java.io.*;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.net.URI;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -218,13 +197,35 @@ class PackageParser {
       };
     }
 
-    JavacTask task = (JavacTask) compiler.getTask(null, fileManager,
-        diagnostics, null, null, Collections.singleton(fileObject));
+    try {
+        /*
+         * HACK! We change Sun's "package" constant to "module" for the duration of this
+         * compile. This will cause problems if we try to compile normal Java code
+         * concurrently in the same VM. This will break if Sun's internal compiler API changes.
+         *
+         * Long term, we probably want to generate a custom parser using ANTLR, but that would
+         * require us to build a ton of infrastructure (error reporting,
+         * parsing external class files, etc.).
+         */
 
-    // Compile the source but don't actually generate a .class file.
-    Iterable<? extends Element> elements = task.analyze();
-    Iterator<? extends Element> iterator = elements.iterator();
-    return iterator.hasNext() ? iterator.next() : null;
+        Field tokenName = Token.class.getField("name");
+        tokenName.setAccessible(true);
+        try {
+            tokenName.set(Token.PACKAGE, "module");
+            JavacTask task = (JavacTask) compiler.getTask(null, fileManager,
+                diagnostics, null, null, Collections.singleton(fileObject));
+            // Compile the source but don't actually generate a .class file.
+            Iterable<? extends Element> elements = task.analyze();
+            Iterator<? extends Element> iterator = elements.iterator();
+            return iterator.hasNext() ? iterator.next() : null;
+        } finally {
+            tokenName.set(Token.PACKAGE, "package");
+        }
+    } catch (IllegalAccessException e) {
+        throw new AssertionError(e);
+    } catch (NoSuchFieldException e) {
+        throw new AssertionError(e);
+    }
   }
 
   /** Exposes a Bake class to javac so we can compile .bake files. */

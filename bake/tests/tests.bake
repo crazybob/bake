@@ -4,4 +4,4 @@
       "external:junit/junit@4.+",
       "bake"
   }
-) package bake.tests;
+) module bake.tests;
