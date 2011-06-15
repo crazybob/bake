@@ -140,6 +140,19 @@ jump to files by name much easier.
          +- java       - Test Java source
          +- resources  - Test resources
 
+### Internal dependencies
+
+To make package `foo` depend on internal Bake packages `bar` and `tee`:
+
+    @bake.Java(
+      dependencies = {
+        "bar", "tee"
+      }
+    }
+    package foo;
+
+When you `bake foo`, Bake will automatically bake `bar` and `tee`, too.
+
 ### External dependencies
 
 Bake automatically downloads external dependencies from the Maven central
