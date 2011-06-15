@@ -54,7 +54,7 @@ abstract class ExecutableJar {
 
   void makeExecutable() throws IOException {
     File executable = new File(handler.repository.outputDirectory("bin"),
-        handler.bakePackage.name());
+        handler.module.name());
     File jarFile = jarFile();
     if (jarFile.lastModified() <= executable.lastModified()) {
       Log.v("%s is up to date.", handler.repository.relativePath(executable));
@@ -86,7 +86,7 @@ abstract class ExecutableJar {
   /** Returns the path for the One-Jar executable jar. */
   File jarFile() throws IOException {
     return new File(handler.repository.outputDirectory("jars"),
-        handler.bakePackage.name() + ".jar");
+        handler.module.name() + ".jar");
   }
 
   /** Writes a script that makes a jar directly executable. */

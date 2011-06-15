@@ -3,7 +3,7 @@ package bake.tool.java;
 
 import bake.Java;
 import bake.tool.BakeError;
-import bake.tool.BakePackage;
+import bake.tool.Module;
 import bake.tool.Log;
 import bake.tool.Repository;
 import com.google.common.base.Charsets;
@@ -59,13 +59,13 @@ class Intellij {
     ideaDirectory = new File(repository.root(), ".idea");
 
     // IntelliJ appears to use '-' in its module file names.
-    BakePackage bakePackage = handler.bakePackage;
+    Module module = handler.module;
   }
 
-  /** Returns the path to the module XML file for the given package. */
-  private File moduleXmlFor(BakePackage bakePackage) {
-    return new File(bakePackage.directory(),
-      bakePackage.name().replace('.', '-') + ".iml");
+  /** Returns the path to the module XML file for the given module. */
+  private File moduleXmlFor(Module module) {
+    return new File(module.directory(),
+      module.name().replace('.', '-') + ".iml");
   }
 
   /**
@@ -78,22 +78,22 @@ class Intellij {
     }
 
     // Write module XML files.
-    Set<BakePackage> allPackages = handler.allPackages();
-    for (BakePackage bakePackage : allPackages) {
-      writeModuleXml(bakePackage);
+    Set<Module> allModules = handler.allModules();
+    for (Module module : allModules) {
+      writeModuleXml(module);
     }
 
     // Add module files to ./idea/modules.xml.
-    addModules(allPackages);
+    addModules(allModules);
   }
 
   /** Adds modules to the modules.xml file. */
-  private void addModules(final Set<BakePackage> allPackages)
+  private void addModules(final Set<Module> allModules)
       throws IOException, BakeError {
     XMLReader xmlReader;
     try {
       xmlReader = new ModulesXmlFilter(
-          XMLReaderFactory.createXMLReader(), allPackages);
+          XMLReaderFactory.createXMLReader(), allModules);
     } catch (SAXException e) {
       throw new AssertionError(e);
     }
@@ -139,12 +139,12 @@ class Intellij {
    * Temporary. Used to ensure we don't overwrite a baked module XML with a
    * transitive module's XML.
    */
-  private static Set<BakePackage> baked = Sets.newHashSet();
+  private static Set<Module> baked = Sets.newHashSet();
 
-  /** Writes the module XML file for the given package. */
-  private void writeModuleXml(BakePackage bakePackage) throws IOException,
+  /** Writes the module XML file for the given module. */
+  private void writeModuleXml(Module module) throws IOException,
       BakeError {
-    if (baked.contains(bakePackage)) return;
+    if (baked.contains(module)) return;
 
     /*
      * We include only first order dependencies in the module XML. Does
@@ -152,9 +152,9 @@ class Intellij {
      * That would be the right thing for it to do.
      */
 
-    JavaHandler handler = bakePackage.javaHandler();
+    JavaHandler handler = module.javaHandler();
     Java java = handler.java;
-    File temp = new File(bakePackage.outputDirectory(), "temp.iml");
+    File temp = new File(module.outputDirectory(), "temp.iml");
 
     // Note: Module XML files don't support $PROJECT_DIR$.
     FileOutputStream fout = new FileOutputStream(temp);
@@ -172,9 +172,9 @@ class Intellij {
       out.write("    <content url=\"file://$MODULE_DIR$\">\n");
       for (String sourceDirectory : java.source()) {
         // It shouldn't be necessary to set isTestSource to true for test
-        // packages. I think that's only used when deciding which jar deps
+        // modules. I think that's only used when deciding which jar deps
         // to include.
-        if (new File(bakePackage.directory(), sourceDirectory).exists()) {
+        if (new File(module.directory(), sourceDirectory).exists()) {
           out.write("      <sourceFolder url=\"file://$MODULE_DIR$/" +
               sourceDirectory + "\" isTestSource=\"false\" />\n");
         }
@@ -188,8 +188,8 @@ class Intellij {
       // Add resource directories. This will include them in the classpath
       // if you run something through IntelliJ.
       for (String resourceDirectory : java.resources()) {
-        if (new File(bakePackage.directory(), resourceDirectory).exists()) {
-          writeOrderEntry(out, bakePackage, new File(bakePackage.directory(),
+        if (new File(module.directory(), resourceDirectory).exists()) {
+          writeOrderEntry(out, module, new File(module.directory(),
               resourceDirectory), null, false, null);
         }
       }
@@ -208,12 +208,12 @@ class Intellij {
         String jarPath = jar.getPath();
         String srcPath = jarPath.substring(0, jarPath.length() - 4)
             + "-src.jar";
-        writeOrderEntry(out, bakePackage, jar, new File(srcPath), true, null);
+        writeOrderEntry(out, module, jar, new File(srcPath), true, null);
       }
 
       // Write external dependencies.
       Map<ExternalArtifact.Id, ExternalArtifact> externalArtifacts
-          = this.handler.externalArtifacts(); // From root package.
+          = this.handler.externalArtifacts(); // From root module.
       Set<ExternalArtifact.Id> firstOrder = Sets.newHashSet();
       for (ExternalDependency externalDependency
           : handler.externalDependencies()) {
@@ -222,24 +222,24 @@ class Intellij {
         ExternalArtifact classes = externalArtifacts.get(jarId);
         ExternalArtifact source
             = externalArtifacts.get(externalDependency.sourceId());
-        writeOrderEntry(out, bakePackage, classes.file,
+        writeOrderEntry(out, module, classes.file,
             source == null ? null : source.file, false, null);
       }
 
       // TODO: Inspect the Ivy results and do this for transitive modules, too.
-      if (bakePackage == this.handler.bakePackage) {
+      if (module == this.handler.module) {
         // Add transitive external dependencies. We add them in the "runtime"
         // scope because we can only compile against first order deps. This
         // enables us to run apps directly from IntelliJ.
-        baked.add(bakePackage);
-        Log.v("Adding additional dependencies for root package...");
+        baked.add(module);
+        Log.v("Adding additional dependencies for root module...");
         for (ExternalArtifact externalArtifact
             : handler.externalArtifacts().values()) {
           if (externalArtifact.id.type == ExternalArtifact.Type.JAR
               && !firstOrder.contains(externalArtifact.id)) {
             ExternalArtifact source
                 = externalArtifacts.get(externalArtifact.sourceId());
-            writeOrderEntry(out, bakePackage, externalArtifact.file,
+            writeOrderEntry(out, module, externalArtifact.file,
                 source == null ? null : source.file, false, "RUNTIME");
           } else {
             Log.v("Already added %s.", externalArtifact.file);
@@ -252,7 +252,7 @@ class Intellij {
 
       // Commit.
       out.close();
-      File moduleXml = moduleXmlFor(bakePackage);
+      File moduleXml = moduleXmlFor(module);
       temp.renameTo(moduleXml);
       Log.v("Wrote %s.", repository.relativePath(moduleXml));
     } finally {
@@ -260,7 +260,7 @@ class Intellij {
     }
   }
 
-  private void writeOrderEntry(Writer out, BakePackage bakePackage,
+  private void writeOrderEntry(Writer out, Module module,
       File classes, File source, boolean exported, String scope)
       throws IOException {
     out.write("    <orderEntry type=\"module-library\"");
@@ -269,7 +269,7 @@ class Intellij {
     out.write(">\n");
     out.write("      <library>\n");
     out.write("        <CLASSES>\n");
-    writeRoot(out, bakePackage, classes);
+    writeRoot(out, module, classes);
     out.write("        </CLASSES>\n");
     out.write("        <JAVADOC />\n");
 
@@ -277,7 +277,7 @@ class Intellij {
       out.write("        <SOURCES />\n");
     } else {
       out.write("        <SOURCES>\n");
-      writeRoot(out, bakePackage, source);
+      writeRoot(out, module, source);
       out.write("        </SOURCES>\n");
     }
 
@@ -285,7 +285,7 @@ class Intellij {
     out.write("    </orderEntry>\n");
   }
 
-  private void writeRoot(Writer out, BakePackage bakePackage, File file)
+  private void writeRoot(Writer out, Module module, File file)
       throws IOException {
     if (file == null) return;
     if (!file.exists()) {
@@ -293,7 +293,7 @@ class Intellij {
       return;
     }
 
-    String path = bakePackage.relativePath(file);
+    String path = module.relativePath(file);
     if (file.isDirectory()) {
       out.write("          <root url=\"file://$MODULE_DIR$/"
           + path + "\" />\n");
@@ -308,13 +308,13 @@ class Intellij {
   private class ModulesXmlFilter extends XMLFilterImpl {
     private final Set<String> modulePaths;
 
-    public ModulesXmlFilter(XMLReader xmlReader, Set<BakePackage> allPackages) {
+    public ModulesXmlFilter(XMLReader xmlReader, Set<Module> allModules) {
       super(xmlReader);
 
       modulePaths = Sets.newTreeSet(); // Sorted.
-      for (BakePackage bakePackage : allPackages) {
+      for (Module module : allModules) {
         modulePaths.add("$PROJECT_DIR$/"
-            + repository.relativePath(moduleXmlFor(bakePackage)));
+            + repository.relativePath(moduleXmlFor(module)));
       }
     }
 

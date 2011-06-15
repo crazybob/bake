@@ -2,12 +2,8 @@
 package bake.tool.java;
 
 import bake.Java;
-import bake.tool.BakeError;
-import bake.tool.BakePackage;
-import bake.tool.Files;
-import bake.tool.Handler;
-import bake.tool.Log;
-import bake.tool.Repository;
+import bake.tool.*;
+import bake.tool.Module;
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
@@ -38,28 +34,28 @@ import java.util.zip.ZipOutputStream;
  */
 public class JavaHandler implements Handler<Java> {
 
-  private static final String TEST_PACKAGE_NAME = "tests";
+  private static final String TEST_MODULE_NAME = "tests";
 
   final Java java;
   final Repository repository;
-  final BakePackage bakePackage;
+  final Module module;
   final ExternalDependencies external;
   final IncrementalCompiler.Builder compilerBuilder;
 
   final ExecutableJar executableJar = new FatJar(this);
 
-  /** True if this is a test package. */
-  final boolean testPackage;
+  /** True if this is a test module. */
+  final boolean testModule;
 
   @Inject JavaHandler(Java java, Repository repository,
-      BakePackage bakePackage, IncrementalCompiler.Builder compilerBuilder) {
+      Module module, IncrementalCompiler.Builder compilerBuilder) {
     this.java = java;
     this.repository = repository;
-    this.bakePackage = bakePackage;
+    this.module = module;
     this.compilerBuilder = compilerBuilder;
     this.external = new ExternalDependencies(this);
 
-    this.testPackage = bakePackage.name().endsWith("." + TEST_PACKAGE_NAME);
+    this.testModule = module.name().endsWith("." + TEST_MODULE_NAME);
   }
 
   public Java annotation() {
@@ -68,12 +64,12 @@ public class JavaHandler implements Handler<Java> {
 
   /** Returns the destination directory for classes. */
   private File classesDirectory() throws IOException {
-    return bakePackage.outputDirectory("classes");
+    return module.outputDirectory("classes");
   }
 
   private Map<ExternalArtifact.Id, ExternalArtifact> externalArtifacts;
 
-  /** Returns all external artifacts required by this package. */
+  /** Returns all external artifacts required by this module. */
   Map<ExternalArtifact.Id, ExternalArtifact> externalArtifacts() {
     return externalArtifacts;
   }
@@ -83,11 +79,11 @@ public class JavaHandler implements Handler<Java> {
     new Intellij(this).bake();
     compileAll(new CompilationContext(externalArtifacts));
     if (!java.mainClass().equals("")) executableJar.bake();
-    if (!testPackage) runAllTests();
+    if (!testModule) runAllTests();
   }
 
   /**
-   * Creates a class loader containing the classes from this package and
+   * Creates a class loader containing the classes from this module and
    * all of its dependencies.
    */
   private ClassLoader classLoader() throws BakeError, IOException {
@@ -106,12 +102,12 @@ public class JavaHandler implements Handler<Java> {
         ClassLoader.getSystemClassLoader());
   }
 
-  /** Gathers jar files needed to run this package. */
+  /** Gathers jar files needed to run this module. */
   private List<File> allJars() throws BakeError, IOException {
     List<File> jarFiles = Lists.newArrayList();
-    for (BakePackage bakePackage : allPackages()) {
-      jarFiles.add(bakePackage.javaHandler().classesJar());
-      jarFiles.addAll(bakePackage.javaHandler().jars());
+    for (Module module : allModules()) {
+      jarFiles.add(module.javaHandler().classesJar());
+      jarFiles.addAll(module.javaHandler().jars());
     }
     addExternalJarsTo(jarFiles);
     return jarFiles;
@@ -126,7 +122,7 @@ public class JavaHandler implements Handler<Java> {
     }
   }
 
-  /** Returns this package's first order external dependencies. */
+  /** Returns this module's first order external dependencies. */
   Iterable<ExternalDependency> externalDependencies()
       throws BakeError {
     List<ExternalDependency> externalDependencies = Lists.newArrayList();
@@ -147,7 +143,7 @@ public class JavaHandler implements Handler<Java> {
       IOException {
     if (!context.compiling.add(this)) {
       // TODO: Output path.
-      throw new BakeError("Circular dependency in " + bakePackage.name() + ".");
+      throw new BakeError("Circular dependency in " + module.name() + ".");
     }
     try {
       // It's important that we check for circular dependencies before this
@@ -163,17 +159,17 @@ public class JavaHandler implements Handler<Java> {
     }
   }
 
-  /** Compiles this package and calls {@link #jarClasses()}. */
+  /** Compiles this module and calls {@link #jarClasses()}. */
   void compileThis(CompilationContext context) throws BakeError,
       IOException {
     if (hasSourceDirectories()) {
 
-      // TODO: We want to support packages that do nothing but aggregate
+      // TODO: We want to support modules that do nothing but aggregate
       // other dependencies. Use a different Bake annotation? Should we go
       // ahead and include transitive dependencies in the compilation
       // classpath? That wouldn't be as clean...
 
-      Log.i("Compiling %s...", bakePackage.name());
+      Log.i("Compiling %s...", module.name());
 
       // Add first-order dependencies to classpath.
       for (String dependency : java.dependencies()) {
@@ -183,39 +179,39 @@ public class JavaHandler implements Handler<Java> {
               = context.externalArtifacts.get(parsed.jarId());
           compilerBuilder.appendClasspath(artifact.file);
         } else {
-          BakePackage otherPackage = repository.packageByName(dependency);
-          JavaHandler otherJava = otherPackage.javaHandler();
+          Module otherModule = repository.moduleByName(dependency);
+          JavaHandler otherJava = otherModule.javaHandler();
           compilerBuilder.appendClasspath(otherJava.classesJar());
           compilerBuilder.appendClasspath(otherJava.jars());
         }
       }
 
-      // Pre-compiled jars in this package.
+      // Pre-compiled jars in this module.
       for (File jar : jars()) compilerBuilder.appendClasspath(jar);
 
       for (String sourceDirectory : java.source()) {
         compilerBuilder.appendSourceDirectory(
-            new File(bakePackage.directory(), sourceDirectory));
+            new File(module.directory(), sourceDirectory));
       }
 
       compilerBuilder.destinationDirectory(classesDirectory())
-        .database(new File(bakePackage.outputDirectory(), "jmake.db"))
+        .database(new File(module.outputDirectory(), "jmake.db"))
         .build()
         .compile();
     } else {
-      Log.i("%s has no source directories.", bakePackage.name());
+      Log.i("%s has no source directories.", module.name());
     }
 
     jarClasses();
   }
 
-  /** Transitively compiles internal packages that this package depends on. */
+  /** Transitively compiles internal modules that this module depends on. */
   private void compileDependencies(CompilationContext context) throws BakeError,
       IOException {
     for (String dependency : java.dependencies()) {
       if (!ExternalDependency.isExternal(dependency)) {
-        BakePackage otherPackage = repository.packageByName(dependency);
-        otherPackage.javaHandler().compileAll(context);
+        Module otherModule = repository.moduleByName(dependency);
+        otherModule.javaHandler().compileAll(context);
       }
     }
   }
@@ -225,14 +221,14 @@ public class JavaHandler implements Handler<Java> {
    */
   private boolean hasSourceDirectories() {
     for (String sourceDirectory : java.source()) {
-      if (new File(bakePackage.directory(), sourceDirectory).exists()) {
+      if (new File(module.directory(), sourceDirectory).exists()) {
         return true;
       }
     }
     return false;
   }
 
-  /** Maintains context between Bake packages during compilation. */
+  /** Maintains context between Bake modules during compilation. */
   static class CompilationContext {
 
     final Map<ExternalArtifact.Id, ExternalArtifact> externalArtifacts;
@@ -249,25 +245,25 @@ public class JavaHandler implements Handler<Java> {
   // Jar:
 
   /**
-   * Returns all of the packages this package transitively depends on
+   * Returns all of the modules this module transitively depends on
    * (including this one).
    */
-  Set<BakePackage> allPackages() throws BakeError, IOException {
-    Set<BakePackage> allPackages = Sets.newHashSet();
-    allPackages.add(bakePackage);
-    addPackageDependenciesTo(allPackages);
-    return allPackages;
+  Set<Module> allModules() throws BakeError, IOException {
+    Set<Module> allModules = Sets.newHashSet();
+    allModules.add(module);
+    addModuleDependenciesTo(allModules);
+    return allModules;
   }
 
   /** Adds internal dependencies to the given set. */
-  private void addPackageDependenciesTo(Set<BakePackage> dependencies)
+  private void addModuleDependenciesTo(Set<Module> dependencies)
       throws BakeError, IOException {
     // TODO: Order these breadth first.
     for (String dependencyId : java.dependencies()) {
       if (!ExternalDependency.isExternal(dependencyId)) {
-        BakePackage otherPackage = repository.packageByName(dependencyId);
-        if (dependencies.add(otherPackage)) {
-          otherPackage.javaHandler().addPackageDependenciesTo(dependencies);
+        Module otherModule = repository.moduleByName(dependencyId);
+        if (dependencies.add(otherModule)) {
+          otherModule.javaHandler().addModuleDependenciesTo(dependencies);
         }
       }
     }
@@ -275,18 +271,18 @@ public class JavaHandler implements Handler<Java> {
 
   /**
    * Creates a classes.jar containing the classes and resources from this
-   * package.
+   * module.
    */
   private void jarClasses() throws IOException {
     // Check class and resource modification times against classes.jar.
     long mostRecent = mostRecentModification(classesDirectory());
     for (String path : java.resources()) {
-      File resourcesDirectory = new File(bakePackage.directory(), path);
+      File resourcesDirectory = new File(module.directory(), path);
       mostRecent = Math.max(mostRecent,
           mostRecentModification(resourcesDirectory));
     }
     if (mostRecent == -1) {
-      Log.v("No classes or resources to jar for %s.", bakePackage.name());
+      Log.v("No classes or resources to jar for %s.", module.name());
       return;
     }
 
@@ -296,7 +292,7 @@ public class JavaHandler implements Handler<Java> {
       return;
     }
 
-    Log.i("Jarring classes and resources for %s...", bakePackage.name());
+    Log.i("Jarring classes and resources for %s...", module.name());
     File temp = new File(classesJar.getPath() + ".temp");
     FileOutputStream fout = new FileOutputStream(temp);
     try {
@@ -306,7 +302,7 @@ public class JavaHandler implements Handler<Java> {
       zout.putNextEntry(new ZipEntry("/"));
       zip(zout, classesDirectory(), "", paths);
       for (String path : java.resources()) {
-        File resourcesDirectory = new File(bakePackage.directory(), path);
+        File resourcesDirectory = new File(module.directory(), path);
         if (resourcesDirectory.exists()) {
           zip(zout, resourcesDirectory, "", paths);
         }
@@ -336,20 +332,20 @@ public class JavaHandler implements Handler<Java> {
     return mostRecent;
   }
 
-  /** Jar containing the classes and resources for this package. */
+  /** Jar containing the classes and resources for this module. */
   File classesJar() {
-    return new File(bakePackage.outputDirectory(), "classes.jar");
+    return new File(module.outputDirectory(), "classes.jar");
   }
 
-  /** Pre-compiled jars that are part of this package. */
+  /** Pre-compiled jars that are part of this module. */
   List<File> jars() throws BakeError {
     if (java.jars().length == 0) return Collections.emptyList();
     List<File> jars = Lists.newArrayList();
     for (String path : java.jars()) {
-      File jarFile = new File(bakePackage.directory(), path);
+      File jarFile = new File(module.directory(), path);
       if (!jarFile.exists()) {
-        throw new BakeError("File not found: " + jarFile + " (package "
-            + bakePackage.name() + ")");
+        throw new BakeError("File not found: " + jarFile + " (module "
+            + module.name() + ")");
       }
       jars.add(jarFile);
     }
@@ -383,43 +379,43 @@ public class JavaHandler implements Handler<Java> {
   /** Runs all tests, including transitive depdnencies. */
   private void runAllTests() throws BakeError, IOException {
     Log.i("Running all tests...");
-    for (BakePackage otherPackage : allPackages()) {
+    for (Module otherModule : allModules()) {
       // TODO: Run least dependent packges first.
-      otherPackage.javaHandler().findAndRunTests();
+      otherModule.javaHandler().findAndRunTests();
     }
   }
 
   boolean ranTests;
 
-  /** Finds the tests for this package and runs them. */
+  /** Finds the tests for this module and runs them. */
   private void findAndRunTests() throws BakeError, IOException {
     if (ranTests) return;
     ranTests = true;
 
-    if (!new File(bakePackage.directory(), TEST_PACKAGE_NAME).exists()) {
-      Log.i("No tests found for %s.", bakePackage.name());
+    if (!new File(module.directory(), TEST_MODULE_NAME).exists()) {
+      Log.i("No tests found for %s.", module.name());
       return;
     }
 
-    Log.i("Building tests for %s...", bakePackage.name());
-    BakePackage testPackage = repository.packageByName(
-        bakePackage.name() + "." + TEST_PACKAGE_NAME);
-    testPackage.bake();
+    Log.i("Building tests for %s...", module.name());
+    Module testModule = repository.moduleByName(
+        module.name() + "." + TEST_MODULE_NAME);
+    testModule.bake();
 
-    Log.i("Running tests for %s...", bakePackage.name());
-    testPackage.javaHandler().runTests();
+    Log.i("Running tests for %s...", module.name());
+    testModule.javaHandler().runTests();
   }
 
-  /** Runs tests in this package. */
+  /** Runs tests in this module. */
   private void runTests() throws BakeError, IOException {
     Set<String> testClassNames = Sets.newHashSet();
     for (String sourceDirectory : java.source()) {
-      findTestFiles(new File(bakePackage.directory(), sourceDirectory),
+      findTestFiles(new File(module.directory(), sourceDirectory),
           "", testClassNames);
     }
 
     if (testClassNames.isEmpty()) {
-      Log.i("No tests found for %s.", bakePackage.name());
+      Log.i("No tests found for %s.", module.name());
     }
 
     /*
@@ -440,16 +436,16 @@ public class JavaHandler implements Handler<Java> {
 
     Process process = new ProcessBuilder(command)
         .redirectErrorStream(true)
-        .directory(bakePackage.directory()) // Run from tests directory.
+        .directory(module.directory()) // Run from tests directory.
         .start();
 
     ByteStreams.copy(process.getInputStream(), System.out);
     try {
       int result = process.waitFor();
       if (result == 0) {
-        Log.i("%s passed.", bakePackage.name());
+        Log.i("%s passed.", module.name());
       } else {
-        throw new BakeError(bakePackage.name() + " failed.");
+        throw new BakeError(module.name() + " failed.");
       }
     } catch (InterruptedException e) {
       throw new AssertionError(e);
@@ -479,33 +475,33 @@ public class JavaHandler implements Handler<Java> {
 
   // Create directories:
 
-  /** Initializes a Java package. */
-  public static void initializePackage(Repository repository,
-      String packageName) throws IOException,
+  /** Initializes a Java module. */
+  public static void initializeModule(Repository repository,
+      String moduleName) throws IOException,
       BakeError {
-    Repository.validatePackageName(packageName);
+    Repository.validateModuleName(moduleName);
 
     // Get default annotation.
     Package javaPackage = JavaHandler.class.getPackage();
     Java java = javaPackage.getAnnotation(Java.class);
 
-    // Create main package.
-    File packageRoot = new File(repository.root(),
-        packageName.replace('.', File.separatorChar));
-    Files.mkdirs(new File(packageRoot, java.source()[0]));
-    Files.mkdirs(new File(packageRoot, java.resources()[0]));
-    String unqualifiedName = packageName.substring(
-        packageName.lastIndexOf('.') + 1);
-    File bakeFile = new File(packageRoot,
+    // Create main module.
+    File moduleRoot = new File(repository.root(),
+        moduleName.replace('.', File.separatorChar));
+    Files.mkdirs(new File(moduleRoot, java.source()[0]));
+    Files.mkdirs(new File(moduleRoot, java.resources()[0]));
+    String unqualifiedName = moduleName.substring(
+        moduleName.lastIndexOf('.') + 1);
+    File bakeFile = new File(moduleRoot,
         unqualifiedName + Repository.DOT_BAKE);
     if (!bakeFile.exists()) {
       com.google.common.io.Files.write(
-          "@bake.Java package " + packageName + ";\n",
+          "@bake.Java module " + moduleName + ";\n",
           bakeFile, Charsets.UTF_8);
     }
 
-    // Create tests package.
-    File testsRoot = new File(repository.root(), packageName.replace(
+    // Create tests module.
+    File testsRoot = new File(repository.root(), moduleName.replace(
         '.', File.separatorChar) + File.separatorChar + "tests");
     Files.mkdirs(new File(testsRoot, java.source()[0]));
     Files.mkdirs(new File(testsRoot, java.resources()[0]));
@@ -514,12 +510,12 @@ public class JavaHandler implements Handler<Java> {
       com.google.common.io.Files.write("@bake.Java(\n"
           + "  dependencies = {\n"
           + "      \"external:junit/junit@4.+\",\n"
-          + "      \"" + packageName + "\"\n"
+          + "      \"" + moduleName + "\"\n"
           + "  }\n"
-          + ") package " + packageName + ".tests;\n",
+          + ") module " + moduleName + ".tests;\n",
           testBakeFile, Charsets.UTF_8);
     }
 
-    Log.i("Created " + repository.relativePath(packageRoot) + ".");
+    Log.i("Created " + repository.relativePath(moduleRoot) + ".");
   }
 }

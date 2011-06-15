@@ -27,22 +27,22 @@ import java.util.regex.Pattern;
 
   public static final String DOT_BAKE = ".bake";
 
-  private static final String rawPackageNamePattern
+  private static final String rawModuleNamePattern
       = "([a-z_]{1}[a-z0-9_]*(\\.[a-z_]{1}[a-z0-9_]*)*)";
-  private static final Pattern packageNamePattern
-      = Pattern.compile(rawPackageNamePattern);
+  private static final Pattern moduleNamePattern
+      = Pattern.compile(rawModuleNamePattern);
 
   private final File root;
   private final File output;
-  private final PackageParser packageParser;
+  private final ModuleParser moduleParser;
 
-  private final Map<String, BakePackage> packages = Maps.newHashMap();
+  private final Map<String, Module> modules = Maps.newHashMap();
 
-  @Inject Repository(@Root File root, PackageParser packageParser)
+  @Inject Repository(@Root File root, ModuleParser moduleParser)
       throws IOException {
     this.root = root;
     this.output = new File(root, "out");
-    this.packageParser = packageParser;
+    this.moduleParser = moduleParser;
   }
 
   /** Initializes a repository at the given path. */
@@ -59,34 +59,34 @@ import java.util.regex.Pattern;
     properties.createNewFile(); // Doesn't overwrite existing file.
   }
 
-  /** Returns true if packageName conforms to our standard. */
-  public static void validatePackageName(String packageName) throws BakeError {
-    if (!packageNamePattern.matcher(packageName).matches()) {
-      throw new BakeError("Invalid package name: " + packageName + "."
-          + " The name should match " + rawPackageNamePattern + ".");
+  /** Returns true if moduleName conforms to our standard. */
+  public static void validateModuleName(String moduleName) throws BakeError {
+    if (!moduleNamePattern.matcher(moduleName).matches()) {
+      throw new BakeError("Invalid module name: " + moduleName + "."
+          + " The name should match " + rawModuleNamePattern + ".");
     }
   }
 
   /**
-   * Finds and parses the .bake file for the given package. Returns an
-   * existing package if we parsed it already.
+   * Finds and parses the .bake file for the given module. Returns an
+   * existing module if we parsed it already.
    */
-  public BakePackage packageByName(String name) throws BakeError, IOException {
-    validatePackageName(name);
-    BakePackage bakePackage = packages.get(name);
-    if (bakePackage == null) {
-      bakePackage = packageParser.parse(name);
-      packages.put(name, bakePackage);
+  public Module moduleByName(String name) throws BakeError, IOException {
+    validateModuleName(name);
+    Module module = modules.get(name);
+    if (module == null) {
+      module = moduleParser.parse(name);
+      modules.put(name, module);
     }
-    return bakePackage;
+    return module;
   }
 
   /**
-   * Returns the package name for the given .bake file or directory. Computes
+   * Returns the module name for the given .bake file or directory. Computes
    * the path to file from root and then replaces the path separator character
    * with '.'.
    */
-  public String toPackageName(File file) throws BakeError, IOException {
+  public String toModuleName(File file) throws BakeError, IOException {
     file = file.getCanonicalFile();
     String path = file.getPath();
 
@@ -118,15 +118,15 @@ import java.util.regex.Pattern;
   }
 
   /**
-   * Bakes the packages at the given paths.
+   * Bakes the modules at the given paths.
    */
   public void bakePaths(Iterable<String> paths) throws BakeError, IOException {
-    List<BakePackage> packages = new ArrayList<BakePackage>();
+    List<Module> modules = new ArrayList<Module>();
     for (String path : paths) {
       Log.v("Resolving %s...", path);
-      packages.add(packageByName(toPackageName(new File(path))));
+      modules.add(moduleByName(toModuleName(new File(path))));
     }
-    for (BakePackage bakePackage : packages) bakePackage.bake();
+    for (Module module : modules) module.bake();
   }
 
   /** Returns true if file is the root of a Bake repository. */
@@ -173,11 +173,11 @@ import java.util.regex.Pattern;
   public void bakeAll() throws BakeError, IOException {
     Set<File> bakeFiles = Sets.newHashSet();
     findBakeFiles(root, bakeFiles);
-    List<BakePackage> packages = new ArrayList<BakePackage>();
+    List<Module> modules = new ArrayList<Module>();
     for (File file : bakeFiles) {
-      packages.add(packageByName(toPackageName(file)));
+      modules.add(moduleByName(toModuleName(file)));
     }
-    for (BakePackage bakePackage : packages) bakePackage.bake();
+    for (Module module : modules) module.bake();
   }
 
   private void findBakeFiles(File directory, Set<File> bakeFiles) {

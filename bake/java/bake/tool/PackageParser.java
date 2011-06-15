@@ -26,11 +26,11 @@ import java.util.zip.ZipInputStream;
 import static javax.tools.JavaFileObject.Kind;
 
 /**
- * Parses .bake files and instantiates {@link BakePackage}s.
+ * Parses .bake files and instantiates {@link Module}s.
  *
  * @author Bob Lee (bob@squareup.com)
  */
-class PackageParser {
+class ModuleParser {
 
   private final Injector injector;
   private final File root;
@@ -38,7 +38,7 @@ class PackageParser {
   private final Elements elements;
   private final Provider<Repository> repositoryProvider;
 
-  @Inject PackageParser(Injector injector, @Root File root,
+  @Inject ModuleParser(Injector injector, @Root File root,
       Diagnostics diagnostics, Elements elements,
       Provider<Repository> repositoryProvider) {
     this.injector = injector;
@@ -49,10 +49,10 @@ class PackageParser {
   }
 
   /**
-   * Parses the .bake file for the package with the given name and instantiates
+   * Parses the .bake file for the module with the given name and instantiates
    * its handlers.
    */
-  BakePackage parse(String name) throws IOException, BakeError {
+  Module parse(String name) throws IOException, BakeError {
     File directory = new File(root, name.replace('.', File.separatorChar));
 
     // .bake file shares the same name as its containing directory.
@@ -60,21 +60,21 @@ class PackageParser {
         + Repository.DOT_BAKE);
 
     // Parse .bake file.
-    Element packageElement = parseBakeFile(bakeFile);
-    if (packageElement == null) {
+    Element moduleElement = parseBakeFile(bakeFile);
+    if (moduleElement == null) {
       throw new BakeError("Error parsing " + bakeFile + ".");
     }
 
-    // Create package. We mutate the handlers map after instantiating
-    // bakePackage so the handlers can reference bakePackage.
+    // Create module. We mutate the handlers map after instantiating
+    // module so the handlers can reference module.
     Map<Class<? extends Annotation>, Handler> handlers
         = new HashMap<Class<? extends Annotation>, Handler>();
-    final BakePackage bakePackage = new BakePackage(injector, name,
+    final Module module = new Module(injector, name,
         repositoryProvider.get(), handlers, directory);
 
-    // Iterate over annotations on the package element.
+    // Iterate over annotations on the module element.
     for (AnnotationMirror annotationMirror
-        : packageElement.getAnnotationMirrors()) {
+        : moduleElement.getAnnotationMirrors()) {
       TypeElement annotationTypeElement
           = (TypeElement) annotationMirror.getAnnotationType().asElement();
 
@@ -85,8 +85,8 @@ class PackageParser {
 
       // Look up a real annotation instance.
       // TODO: Proxy the annotation instance so it can return Class objects.
-      Annotation annotation = packageElement.getAnnotation(annotationType);
-      Handler handler = bakePackage.newHandlerFor(annotation);
+      Annotation annotation = moduleElement.getAnnotation(annotationType);
+      Handler handler = module.newHandlerFor(annotation);
       if (handler != null) handlers.put(annotationType, handler);
     }
 
@@ -94,7 +94,7 @@ class PackageParser {
       throw new BakeError("No Bake annotations found in " + bakeFile + ".");
     }
 
-    return bakePackage;
+    return module;
   }
 
   /** Looks up the given type in the current runtime. */
@@ -150,7 +150,7 @@ class PackageParser {
   }
 
   /**
-   * Parses a {@code .bake} file. Returns the package element.
+   * Parses a {@code .bake} file. Returns the module element.
    */
   private Element parseBakeFile(File file) throws IOException {
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
