@@ -1,4 +1,3 @@
-- Add transitive dependencies as "runtime" deps in IntelliJ.
 - Instead of building and running everything, build and test only the
   packages that were affected by your change. Diff against git master to
   determine what changed.
