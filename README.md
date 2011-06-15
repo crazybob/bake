@@ -55,7 +55,7 @@ is critical to a company's agility and the long term health of its code base.
 
 ## Installation
 
-Put `java/bin` in your `PATH`.
+Put `bin/bake` somewhere in your `PATH`.
 
 ## Usage (by example)
 
