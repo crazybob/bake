@@ -1,0 +1,38 @@
+<ivysettings>
+  <property name="java.net.maven.pattern"
+      value="[organisation]/jars/[module]-[revision].[ext]"/>
+
+  <resolvers>
+    <!-- TODO: Configure this in Java code. -->
+    <chain name="default">
+      <!--
+         - Do not change resolver names! Doing so causes problems with Ivy's
+         - cache (which can be resolved by deleting ~/.ivy2/cache).
+         -->
+      <ibiblio name="maven" m2compatible="true"/>
+      <ibiblio name="java.net" root="http://download.java.net/maven/2/"
+          m2compatible="true"/>
+      <ibiblio name="java.net-maven1" root="http://download.java.net/maven/1"
+          pattern="${java.net.maven.pattern}" m2compatible="false"/>
+      <ibiblio name="warp-persist" m2compatible="true"
+          root="http://warp-persist-neodatis.googlecode.com/svn/trunk/repo"/>
+      <ibiblio name="jboss" m2compatible="true"
+          root="http://repository.jboss.org/maven2"/>
+      <ibiblio name="org.guiceyfruit" m2compatible="true"
+          root="http://guiceyfruit.googlecode.com/svn/repo/releases/"/>
+      <ibiblio name="codahale" m2compatible="true"
+          root="http://repo.codahale.com" />
+    </chain>
+
+    <!--
+      - We create a fake repository to expose our internal packages.
+      -->
+    <filesystem name="internal">
+      <!-- These files are writting in ExternalDependencies. -->
+      <ivy pattern="${internal.repository.dir}/[module].xml" />
+    </filesystem>
+  </resolvers>
+  <modules>
+    <module organisation="internal" resolver="internal"/>
+  </modules>
+</ivysettings>

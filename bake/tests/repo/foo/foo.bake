@@ -1,0 +1,12 @@
+@bake.Java(
+    dependencies = {
+        "foo.bar",
+        "tee",
+        "external:com.google.inject/guice@3.0",
+        "external:com.sun.jersey/jersey-server@1.1.5.1",
+        "external:com.sun.jersey/jersey-core@1.1.5.1",
+        "external:javax.ws.rs/jsr311-api@1.1.1",
+        "external.one_jar.boot"
+    },
+    mainClass = "bake.example.foo.Foo"
+) package foo;

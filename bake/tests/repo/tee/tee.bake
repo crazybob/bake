@@ -1,0 +1,3 @@
+@bake.Java(
+  jars = "tee.jar"
+) package tee;

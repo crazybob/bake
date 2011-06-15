@@ -1,0 +1,8 @@
+/**
+ * A correct incremental Java compiler. Built from source from
+ * http://kenai.com/projects/jmake.
+ */
+@bake.Java(
+  jars = { "jmake.jar" },
+  license = bake.License.GPL
+) package external.jmake;

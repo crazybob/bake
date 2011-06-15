@@ -1,0 +1,17 @@
+/**
+ * Bake is a Java build tool. This build file is used
+ * to build Bake itself.
+ */
+@bake.Java(
+    dependencies = {
+        "external:com.google.inject/guice@3.0",
+        "external:org.apache.ivy/ivy@2.2.0",
+        "external:com.google.guava/guava@r09",
+        "external:javax.inject/javax.inject@1",
+        "external:aopalliance/aopalliance@1.0",
+        "external:commons-codec/commons-codec@1.5",
+        "external.jmake",
+        "external.one_jar.boot"
+    },
+    mainClass = "bake.tool.Main"
+) package bake;

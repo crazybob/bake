@@ -1,0 +1,8 @@
+@bake.Java(
+    dependencies = {
+//        "external:com.codahale/shore@0.3",
+        "external:com.sun.jersey/jersey-server@1.1.5.1",
+        "external:com.sun.jersey/jersey-core@1.1.5.1",
+        "external:javax.ws.rs/jsr311-api@1.1.1"
+    }
+) package foo.bar;

@@ -1,0 +1,7 @@
+/**
+ * One-Jar's boot jar. See http://one-jar.sourceforge.net/.
+ */
+@bake.Java(
+  jars = { "one-jar-boot-0.97.jar" },
+  license = bake.License.BSD
+) package external.one_jar.boot;

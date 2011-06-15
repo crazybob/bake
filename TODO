@@ -1,0 +1,21 @@
+- Add transitive dependencies as "runtime" deps in IntelliJ.
+- Instead of building and running everything, build and test only the
+  packages that were affected by your change. Diff against git master to
+  determine what changed.
+- Concurrent compilation.
+- Auto-update Bake (just check it into SC?)
+- Support bake {package-name}.
+- Support dynamically loading bake annotations and handler classes.
+  - Use Bake's standard dependency scheme. For example, would could have:
+    com.mycompany.MyAnnotation=mybakepackage
+- Generate Javadocs.
+- Support git submodules.
+- Build and test everything that depends on code you changed.
+- Generate Maven-compatible artifacts.
+  - Tell Bake the version when building (so it can generate a pom).
+  - Use "snapshot" otherwise.
+- Verifies SDK of dependencies is compatible.
+- Don't allow checkin until the tests have been run.
+  - Hash differences from master. Write hash after tests pass.
+- Download source code for transitive deps
+  (https://issues.apache.org/jira/browse/IVY-1003)
