@@ -1,12 +1,12 @@
 - Instead of building and running everything, build and test only the
-  packages that were affected by your change. Diff against git master to
+  modules that were affected by your change. Diff against git master to
   determine what changed.
 - Concurrent compilation.
 - Auto-update Bake (just check it into SC?)
-- Support bake {package-name}.
+- Support bake {module-name}.
 - Support dynamically loading bake annotations and handler classes.
   - Use Bake's standard dependency scheme. For example, would could have:
-    com.mycompany.MyAnnotation=mybakepackage
+    com.mycompany.MyAnnotation=mybakemodule
 - Generate Javadocs.
 - Support git submodules.
 - Build and test everything that depends on code you changed.
