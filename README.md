@@ -26,13 +26,12 @@ documentation (TODO), a dependency graph (TODO) and an IDE configuration (TODO),
 all from the same package configuration.
 
 Bake implements incremental builds correctly. Recompiling classes based on file
-timestamps doesn't work when constants and superclasses change. Bake
+timestamps doesn't work when constants, interfaces and superclasses change. Bake
 uses [jmake](http://kenai.com/projects/jmake) to ensure incremental builds
 never break. You perform clean builds far less often (hopefully never) because
 your deliverables don't get out of sync.
 
-Bake is fast and reliable. It uses [One-Jar](http://one-jar.sourceforge.net/)
-to speed up fat jar creation. If you kill Bake during a build, it leaves your
+Bake is fast and reliable. If you kill Bake during a build, it leaves your
 filesystem in a good state. Bake avoids repeating unnecessary work.
 
 Bake is simple and convenient. Bake generates executables that embed your jar
@@ -170,6 +169,18 @@ generate an executable containing all of the necessary dependencies in
 `out/bin/{package-name}`.
 
 [1]: http://java.sun.com/docs/books/jls/third_edition/html/packages.html#7.4.1.1
+
+## IntelliJ
+
+Bake supports IntelliJ's directory-based configuration (as opposed to it's
+`ipr` file-based configuration).
+
+To get started, create an empty directory-based IntelliJ project in your
+Bake repository's root directory; do not create an IntelliJ module. Run Bake.
+Bake will automatically add/update IntelliJ modules for anything you build.
+
+Do not check your module (`iml`) files into source control. Bake generates
+them automatically.
 
 ## Building Bake itself
 
