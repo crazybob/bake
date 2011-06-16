@@ -103,6 +103,7 @@ class Intellij {
     String originalXml = Files.toString(modulesXmlFile, Charsets.UTF_8);
     String newXml = xmlToString(xmlReader, new InputSource(
         new StringReader(originalXml)));
+
     Log.v("original: %s", originalXml);
     Log.v("new: %s", newXml);
 
@@ -127,7 +128,9 @@ class Intellij {
       StreamResult result = new StreamResult(out);
       SAXSource source = new SAXSource(xmlReader, inputSource);
       transformer.transform(source, result);
-      return out.toString();
+
+      // Match IntelliJ's formatting.
+      return out.toString().replaceAll("([^ ])/>", "$1 />");
     } catch (TransformerConfigurationException e) {
       throw new AssertionError(e);
     } catch (TransformerException e) {
