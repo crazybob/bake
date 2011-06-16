@@ -130,6 +130,7 @@ class Intellij {
       transformer.transform(source, result);
 
       // Match IntelliJ's formatting.
+      out.write("\n"); // new line at EOF.
       return out.toString().replaceAll("([^ ])/>", "$1 />");
     } catch (TransformerConfigurationException e) {
       throw new AssertionError(e);
