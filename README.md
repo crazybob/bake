@@ -7,7 +7,7 @@ Java annotations for its configuration instead of Groovy.
 
 With Bake, you always build the transitive closure of your dependencies.
 You don't need to mess with intermediate jars, and you don't need to explicitly
-rebuild dependencies. Bake packages reference each other directly, and Bake
+rebuild dependencies. Bake modules reference each other directly, and Bake
 rebuilds or retrieves transitive dependencies automatically. Bake keeps
 everything up-to-date automatically.
 
@@ -16,14 +16,14 @@ update and test all of the code that depends on that API; Bake facilitates this.
 In other words, Bake discourages procrastination, simplifies reuse and fends
 off bit rot. That said, Bake plays nicely with external dependencies, too.
 
-Bake uses the Java Programming Language for its configuration file format.
-This enables Java programmers to reuse their existing knowledge and tools.
-If you've ever written a [`package-info.java` file][1], you already know
-how to write a Bake configuration file.
+Bake's configuration file format strongly resembles the Java programming
+language. This enables Java programmers to reuse their existing knowledge and
+tools. If you've ever written a [`package-info.java` file][1], you already know
+how to write a Bake configuration file; simply replace `package` with `module`.
 
 Bake is declarative. Bake can potentially generate a fat binary,
 documentation (TODO), a dependency graph (TODO) and an IDE configuration (TODO),
-all from the same package configuration.
+all from the same module configuration.
 
 Bake implements incremental builds correctly. Recompiling classes based on file
 timestamps doesn't work when constants, interfaces and superclasses change. Bake
@@ -40,7 +40,7 @@ and all of its dependencies. For example:
     $ out/bin/hello_world
     Hello, World!
 
-Finally, Bake is easy to extend, too. Simply create a package annotation and
+Finally, Bake is easy to extend, too. Simply create an annotation and
 implement its handler. `@bake.BakeAnnotation` ties an annotation to its handler.
 It's plain, typesafe Java. There's no need to deal with XML.
 
@@ -55,7 +55,8 @@ is critical to a company's agility and the long term health of its code base.
 
 ## Installation
 
-Put `bin/bake` somewhere in your `PATH`.
+    $ curl https://github.com/square/bake/raw/master/bin/bake > bake
+    $ chmod +x bake
 
 ## Usage (by example)
 
@@ -72,12 +73,12 @@ later use to identify the repository's root directory.
 
 You can run subsequent commands from anywhere within a Bake repository.
 
-Generate a directory hierarchy and Bake file for a Java package named
+Generate a directory hierarchy and Bake file for a Java module named
 `foo.bar` (non destructive):
 
     $ bake init-java foo.bar
 
-Build the package[s] in a given directory or directories:
+Build the module[s] in a given directory or directories:
 
     $ bake .
 
@@ -91,30 +92,30 @@ for `.bake` files):
 
     $ bake all
 
-## Bake packages
+## Bake modules
 
-Bake packages have a lot in common with Java packages. They're hierarchical, and
+Bake modules have a lot in common with Java packages. They're hierarchical, and
 their name and directory structures reflect this hierarchy. For example,
-the Bake package `foo.bar` is configured in a file named `foo/bar/bar.bake`.
+the Bake module `foo.bar` is configured in a file named `foo/bar/bar.bake`.
+Like Java packages, Bake's child and parent module have no special relationship.
 
-Like Java packages, Bake's child and parent packages have
-no special relationship. Bake packages are internal, so they needn't follow
-Java's standard package naming conventions--they don't incorporate a reversed
-domain name.
+Note: Bake modules are internal, so they needn't follow Java's standard package
+naming conventions--they don't incorporate a reversed domain name.
 
-### The Bake file
+## The Bake file
 
-A Bake file ends with `.bake` and resides in its package's top-level
-directory. Bake files follow the same format as [`package-info.java` files][1]
-insofar as they contain an annotated `package` declaration but no classes.
-Annotations on the `package` declaration define a Bake package.
+A Bake file ends with `.bake` and resides in its module's top-level
+directory. Bake files are similar to [`package-info.java` files][1].
+Instead of containing an annotated `package` element, `.bake` files
+contain an annotated `module` element. The module annotations map to
+handlers which Bake executes to build the module.
 
-For example, if a Bake package named `foo.bar` contains Java code and follows
+For example, if a Bake module named `foo.bar` contains Java code and follows
 Bake's default conventions, its bake file named `foo/bar/bar.bake` would
 contain:
 
     /** The {@code foo.bar} Java library. */
-    @bake.Java package foo.bar;
+    @bake.Java module foo.bar;
 
 `@bake.Java` is a Bake annotation that identifies Java libraries. Bake
 annotation types like `@bake.Java` are annotated themselves with
@@ -125,7 +126,7 @@ that annotation type.
 Naming configuration files after their containing package makes using IDEs to
 jump to files by name much easier.
 
-### Java packages
+## Java modules
 
 `bake init-java foo` creates the following directory structure:
 
@@ -134,22 +135,32 @@ jump to files by name much easier.
      +- foo.bake  - Bake file
      +- java      - Java source
      +- resources - Resources
-     +- tests     - Tests for the foo package.
+     +- tests     - Tests for the foo module.
          |
          +- tests.bake - Test Bake file
          +- java       - Test Java source
          +- resources  - Test resources
 
+## Dependencies
+
+Bake includes the transitive closure of your module's dependencies at run time,
+but it compiles against direct dependencies only. Requiring explicit compilation
+dependencies improves maintainability. If you're trying to find a class,
+you need only look at a module's immediate dependencies instead of searching
+arbitrarily deeply. A change to a transitive dependency could affect your application
+at run time, but your module will still compile.
+
 ### Internal dependencies
 
-To make package `foo` depend on internal Bake packages `bar` and `tee`:
+To make module `foo` depend on internal Bake modules `bar` and `tee`:
 
     @bake.Java(
       dependencies = {
-        "bar", "tee"
+        "bar",
+        "tee"
       }
     }
-    package foo;
+    module foo;
 
 When you `bake foo`, Bake will automatically bake `bar` and `tee`, too.
 
@@ -161,14 +172,14 @@ following URI spec:
 
     external:{groupId}/{artifactId}[@{version}]
 
-For example, a Java package that depends on Guice might look like:
+For example, a Java module that depends on Guice might look like:
 
     @bake.Java(
       dependencies = {
         "external:com.google.inject/guice@3.0"
       }
     }
-    package myapp;
+    module myapp;
 
 The first time you build `my-app`, Bake will download Guice 3.0 if
 it hasn't been downloaded already. Bake will generate an error if your
@@ -179,16 +190,14 @@ library.
 
 If you set the `mainClass` attribute on the `@Java` annotation, Bake will
 generate an executable containing all of the necessary dependencies in
-`out/bin/{package-name}`.
-
-[1]: http://java.sun.com/docs/books/jls/third_edition/html/packages.html#7.4.1.1
+`out/bin/{module-name}`.
 
 ## IntelliJ
 
 Bake supports IntelliJ's directory-based configuration (as opposed to it's
 `ipr` file-based configuration).
 
-To get started, create an empty directory-based IntelliJ project in your
+To start, create an empty directory-based IntelliJ project in your
 Bake repository's root directory; do not create an IntelliJ module. Run Bake.
 Bake will automatically add/update IntelliJ modules for anything you build.
 
@@ -202,3 +211,5 @@ them automatically.
     $ bin/bake bake
 
 The new bake executable is in `out/bin/bake`.
+
+[1]: http://java.sun.com/docs/books/jls/third_edition/html/packages.html#7.4.1.1

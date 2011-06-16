@@ -1,11 +1,8 @@
 // Copyright 2011 Square, Inc.
 package bake.tool.java;
 
-import bake.tool.BakeError;
-import bake.tool.BakePackage;
-import bake.tool.Files;
-import bake.tool.Log;
-import bake.tool.Profile;
+import bake.tool.*;
+import bake.tool.Module;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -51,7 +48,7 @@ class OneJar { // TODO: Extend ExecutableJar.
   }
 
   /**
-   * Creates an executable jar containing all of this package's dependencies.
+   * Creates an executable jar containing all of this module's dependencies.
    */
   @Profile void bake() throws BakeError, IOException {
     // Maps paths (in zip) to files.
@@ -127,15 +124,15 @@ class OneJar { // TODO: Extend ExecutableJar.
 
   private void addInternalDependenciesTo(Map<String, File> files)
       throws BakeError, IOException {
-    Set<BakePackage> allPackages = handler.allPackages();
-    for (BakePackage bakePackage : allPackages) {
-      String baseName = "internal-" + bakePackage.name();
+    Set<Module> allModules = handler.allModules();
+    for (Module module : allModules) {
+      String baseName = "internal-" + module.name();
       // Skip main classes jar. We store this in main/main.jar.
-      if (bakePackage != handler.bakePackage) {
+      if (module != handler.module) {
         files.put("lib/" + baseName + ".jar",
-            bakePackage.javaHandler().classesJar());
+            module.javaHandler().classesJar());
       }
-      for (File jar : bakePackage.javaHandler().jars()) {
+      for (File jar : module.javaHandler().jars()) {
         files.put("lib/" + baseName + "-" + jar.getName(), jar);
       }
     }
@@ -217,6 +214,6 @@ class OneJar { // TODO: Extend ExecutableJar.
   /** Returns the path for the One-Jar executable jar. */
   private File oneJarFile() throws IOException {
     return new File(handler.repository.outputDirectory("bin"),
-        handler.bakePackage.name());
+        handler.module.name());
   }
 }

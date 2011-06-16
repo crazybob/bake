@@ -8,50 +8,29 @@ import com.google.common.io.ByteStreams;
 import com.google.inject.Injector;
 import com.simontuffs.onejar.JarClassLoader;
 import com.sun.source.util.JavacTask;
+import com.sun.tools.javac.parser.Token;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.NestingKind;
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.*;
 import javax.lang.model.util.Elements;
-import javax.tools.ForwardingJavaFileManager;
-import javax.tools.ForwardingJavaFileObject;
-import javax.tools.JavaCompiler;
-import javax.tools.JavaFileManager;
-import javax.tools.JavaFileObject;
-import javax.tools.StandardJavaFileManager;
-import javax.tools.StandardLocation;
-import javax.tools.ToolProvider;
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.io.Writer;
+import javax.tools.*;
+import java.io.*;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.net.URI;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import static javax.tools.JavaFileObject.Kind;
 
 /**
- * Parses .bake files and instantiates {@link BakePackage}s.
+ * Parses .bake files and instantiates {@link Module}s.
  *
  * @author Bob Lee (bob@squareup.com)
  */
-class PackageParser {
+class ModuleParser {
 
   private final Injector injector;
   private final File root;
@@ -59,7 +38,7 @@ class PackageParser {
   private final Elements elements;
   private final Provider<Repository> repositoryProvider;
 
-  @Inject PackageParser(Injector injector, @Root File root,
+  @Inject ModuleParser(Injector injector, @Root File root,
       Diagnostics diagnostics, Elements elements,
       Provider<Repository> repositoryProvider) {
     this.injector = injector;
@@ -70,10 +49,10 @@ class PackageParser {
   }
 
   /**
-   * Parses the .bake file for the package with the given name and instantiates
+   * Parses the .bake file for the module with the given name and instantiates
    * its handlers.
    */
-  BakePackage parse(String name) throws IOException, BakeError {
+  Module parse(String name) throws IOException, BakeError {
     File directory = new File(root, name.replace('.', File.separatorChar));
 
     // .bake file shares the same name as its containing directory.
@@ -81,21 +60,21 @@ class PackageParser {
         + Repository.DOT_BAKE);
 
     // Parse .bake file.
-    Element packageElement = parseBakeFile(bakeFile);
-    if (packageElement == null) {
+    Element moduleElement = parseBakeFile(bakeFile);
+    if (moduleElement == null) {
       throw new BakeError("Error parsing " + bakeFile + ".");
     }
 
-    // Create package. We mutate the handlers map after instantiating
-    // bakePackage so the handlers can reference bakePackage.
+    // Create module. We mutate the handlers map after instantiating
+    // module so the handlers can reference module.
     Map<Class<? extends Annotation>, Handler> handlers
         = new HashMap<Class<? extends Annotation>, Handler>();
-    final BakePackage bakePackage = new BakePackage(injector, name,
+    final Module module = new Module(injector, name,
         repositoryProvider.get(), handlers, directory);
 
-    // Iterate over annotations on the package element.
+    // Iterate over annotations on the module element.
     for (AnnotationMirror annotationMirror
-        : packageElement.getAnnotationMirrors()) {
+        : moduleElement.getAnnotationMirrors()) {
       TypeElement annotationTypeElement
           = (TypeElement) annotationMirror.getAnnotationType().asElement();
 
@@ -106,8 +85,8 @@ class PackageParser {
 
       // Look up a real annotation instance.
       // TODO: Proxy the annotation instance so it can return Class objects.
-      Annotation annotation = packageElement.getAnnotation(annotationType);
-      Handler handler = bakePackage.newHandlerFor(annotation);
+      Annotation annotation = moduleElement.getAnnotation(annotationType);
+      Handler handler = module.newHandlerFor(annotation);
       if (handler != null) handlers.put(annotationType, handler);
     }
 
@@ -115,7 +94,7 @@ class PackageParser {
       throw new BakeError("No Bake annotations found in " + bakeFile + ".");
     }
 
-    return bakePackage;
+    return module;
   }
 
   /** Looks up the given type in the current runtime. */
@@ -171,7 +150,7 @@ class PackageParser {
   }
 
   /**
-   * Parses a {@code .bake} file. Returns the package element.
+   * Parses a {@code .bake} file. Returns the module element.
    */
   private Element parseBakeFile(File file) throws IOException {
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -218,13 +197,35 @@ class PackageParser {
       };
     }
 
-    JavacTask task = (JavacTask) compiler.getTask(null, fileManager,
-        diagnostics, null, null, Collections.singleton(fileObject));
+    try {
+        /*
+         * HACK! We change Sun's "package" constant to "module" for the duration of this
+         * compile. This will cause problems if we try to compile normal Java code
+         * concurrently in the same VM. This will break if Sun's internal compiler API changes.
+         *
+         * Long term, we probably want to generate a custom parser using ANTLR, but that would
+         * require us to build a ton of infrastructure (error reporting,
+         * parsing external class files, etc.).
+         */
 
-    // Compile the source but don't actually generate a .class file.
-    Iterable<? extends Element> elements = task.analyze();
-    Iterator<? extends Element> iterator = elements.iterator();
-    return iterator.hasNext() ? iterator.next() : null;
+        Field tokenName = Token.class.getField("name");
+        tokenName.setAccessible(true);
+        try {
+            tokenName.set(Token.PACKAGE, "module");
+            JavacTask task = (JavacTask) compiler.getTask(null, fileManager,
+                diagnostics, null, null, Collections.singleton(fileObject));
+            // Compile the source but don't actually generate a .class file.
+            Iterable<? extends Element> elements = task.analyze();
+            Iterator<? extends Element> iterator = elements.iterator();
+            return iterator.hasNext() ? iterator.next() : null;
+        } finally {
+            tokenName.set(Token.PACKAGE, "package");
+        }
+    } catch (IllegalAccessException e) {
+        throw new AssertionError(e);
+    } catch (NoSuchFieldException e) {
+        throw new AssertionError(e);
+    }
   }
 
   /** Exposes a Bake class to javac so we can compile .bake files. */
