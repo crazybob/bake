@@ -2,10 +2,10 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/bake/bake.iml" filepath="$PROJECT_DIR$/bake/bake.iml"/>
-      <module fileurl="file://$PROJECT_DIR$/bake/tests/bake-tests.iml" filepath="$PROJECT_DIR$/bake/tests/bake-tests.iml"/>
-      <module fileurl="file://$PROJECT_DIR$/external/jmake/external-jmake.iml" filepath="$PROJECT_DIR$/external/jmake/external-jmake.iml"/>
-      <module fileurl="file://$PROJECT_DIR$/external/one_jar/boot/external-one_jar-boot.iml" filepath="$PROJECT_DIR$/external/one_jar/boot/external-one_jar-boot.iml"/>
+      <module fileurl="file://$PROJECT_DIR$/bake/bake.iml" filepath="$PROJECT_DIR$/bake/bake.iml" />
+      <module fileurl="file://$PROJECT_DIR$/bake/tests/bake-tests.iml" filepath="$PROJECT_DIR$/bake/tests/bake-tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/external/jmake/external-jmake.iml" filepath="$PROJECT_DIR$/external/jmake/external-jmake.iml" />
+      <module fileurl="file://$PROJECT_DIR$/external/one_jar/boot/external-one_jar-boot.iml" filepath="$PROJECT_DIR$/external/one_jar/boot/external-one_jar-boot.iml" />
     </modules>
   </component>
 </project>
