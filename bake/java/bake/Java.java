@@ -10,7 +10,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Defines a Java package. By convention, tests go in sub-packages named
+ * Defines a Java module. By convention, tests go in sub-modules named
  * {@code tests}.
  *
  * @author Bob Lee (bob@squareup.com)
@@ -21,18 +21,18 @@ import java.lang.annotation.Target;
 public @interface Java {
 
   // TODO: Support compile and run time-only dependencies? Or should those
-  // go in separate packages?
+  // go in separate modules?
   // TODO: Support excluding transitive dependencies.
 
   /**
-   * Identifies dependencies on other Java code by package name. Included
+   * Identifies dependencies on other Java code by module name. Included
    * during compliation and at run time.
    */
   String[] dependencies() default {};
 
   /**
    * Identifies the main class. If set, Bake will be an executable jar
-   * containing all of this package's dependencies.
+   * containing all of this module's dependencies.
    */
   String mainClass() default "";
 
@@ -43,7 +43,7 @@ public @interface Java {
   String[] args() default {};
 
   /**
-   * Published packages. Requires {@link #mainClass()}.
+   * VM arguments. Requires {@link #mainClass()}.
    */
   String[] vmArgs() default { "-Xmx1G" };
 
@@ -69,7 +69,7 @@ public @interface Java {
   Sdk sdk() default Sdk.JAVA;
 
   /**
-   * The software license for this package.
+   * The software license for this module.
    */
   License license() default License.PROPRIETARY;
 }

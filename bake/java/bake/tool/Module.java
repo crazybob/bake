@@ -13,11 +13,11 @@ import java.util.Collections;
 import java.util.Map;
 
 /**
- * A Bake package.
+ * A Bake module.
  *
  * @author Bob Lee (bob@squareup.com)
  */
-public class BakePackage {
+public class Module {
 
   private final Injector injector;
   private final String name;
@@ -26,9 +26,9 @@ public class BakePackage {
   private final File directory;
   private final File output;
 
-  BakePackage(Injector injector, String name, Repository repository,
-      Map<Class<? extends Annotation>, Handler> handlers,
-      File directory) throws IOException {
+  Module(Injector injector, String name, Repository repository,
+         Map<Class<? extends Annotation>, Handler> handlers,
+         File directory) throws IOException {
     this.injector = injector;
     this.name = name;
     this.repository = repository;
@@ -36,11 +36,11 @@ public class BakePackage {
     this.directory = directory;
 
     // The output directory is named "foo.bar" instead of "foo/bar". This way
-    // output directories don't conflict with nested packages.
-    this.output = repository.outputDirectory("packages/" + name);
+    // output directories don't conflict with nested modules.
+    this.output = repository.outputDirectory("modules/" + name);
   }
 
-  /** Bakes this package. Delegates to each handler. */
+  /** Bakes this module. Delegates to each handler. */
   public void bake() throws IOException, BakeError {
     Log.i("Baking %s...", name);
     for (Handler handler : handlers.values()) {
@@ -54,12 +54,12 @@ public class BakePackage {
   public JavaHandler javaHandler() throws BakeError {
     JavaHandler javaHandler = (JavaHandler) handlers.get(Java.class);
     if (javaHandler == null) {
-      throw new BakeError("Not a Java package: " + name);
+      throw new BakeError("Not a Java module: " + name);
     }
     return javaHandler;
   }
 
-  /** Returns the path from this package to the root. */
+  /** Returns the path from this module to the root. */
   private String pathToRoot() {
     StringBuilder path = new StringBuilder("../");
     int index = -1;
@@ -67,7 +67,7 @@ public class BakePackage {
     return path.toString();
   }
 
-  /** Returns a path relative to this package directory. */
+  /** Returns a path relative to this module directory. */
   public String relativePath(File absolute) {
     String absolutePath = absolute.getPath();
     if (absolutePath.startsWith(directory.getPath())) {
@@ -79,12 +79,12 @@ public class BakePackage {
     }
   }
 
-  /** Returns the package name. */
+  /** Returns the module name. */
   public String name() {
     return name;
   }
 
-  /** Returns this package's directory. */
+  /** Returns this module's directory. */
   public File directory() {
     return directory;
   }
@@ -95,7 +95,7 @@ public class BakePackage {
   }
 
   /**
-   * Returns an output directory relative to this package's output directory.
+   * Returns an output directory relative to this module's output directory.
    */
   public File outputDirectory(String path) throws IOException {
     return Files.mkdirs(new File(output, path));
@@ -117,7 +117,7 @@ public class BakePackage {
 
   /**
    * Creates a new handler for the given annotation. Makes the annotation
-   * and this BakePackage instance available for injection into the handler.
+   * and this Module instance available for injection into the handler.
    * Uses {@link BakeAnnotation} on the given annotation's type to determine
    * the handler type.
    */
@@ -131,7 +131,7 @@ public class BakePackage {
         new AbstractModule() {
           @Override protected void configure() {
             castAndBind(annotation.annotationType(), annotation);
-            bind(BakePackage.class).toInstance(BakePackage.this);
+            bind(Module.class).toInstance(Module.this);
           }
 
           /** Casts instance to type at run time. */

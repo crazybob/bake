@@ -5,4 +5,4 @@
 @bake.Java(
   jars = { "jmake.jar" },
   license = bake.License.GPL
-) package external.jmake;
+) module external.jmake;

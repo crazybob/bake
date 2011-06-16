@@ -9,4 +9,4 @@
         "external.one_jar.boot"
     },
     mainClass = "bake.example.foo.Foo"
-) package foo;
+) module foo;

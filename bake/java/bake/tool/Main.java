@@ -55,11 +55,11 @@ public class Main {
 
       if (args.get(0).equals("init-java")) {
         if (args.size() != 2) {
-          System.err.println("Usage: bake init-java [package name]");
+          System.err.println("Usage: bake init-java [module name]");
           exit(1);
         }
 
-        initializeJavaPackage(repo, args.get(1));
+        initializeJavaModule(repo, args.get(1));
       } else if (args.get(0).equals("all")) {
         buildAll(repo);
       } else {
@@ -92,9 +92,9 @@ public class Main {
     repo.bakeAll();
   }
 
-  private static void initializeJavaPackage(Repository repo,
-      String packageName) throws BakeError, IOException {
-    JavaHandler.initializePackage(repo, packageName);
+  private static void initializeJavaModule(Repository repo,
+      String moduleName) throws BakeError, IOException {
+    JavaHandler.initializeModule(repo, moduleName);
   }
 
   private static void printUsage() {
@@ -112,15 +112,15 @@ public class Main {
         + "\n"
         + "  $ bake init {path}\n"
         + "\n"
-        + "Initialize a Bake Java package:\n"
+        + "Initialize a Bake Java module:\n"
         + "\n"
-        + "  $ bake init-java {package-name}\n"
+        + "  $ bake init-java {module-name}\n"
         + "\n"
-        + "Build specified packages:\n"
+        + "Build specified modules:\n"
         + "\n"
-        + "  $ bake {package-path} [{package-path}...]\n"
+        + "  $ bake {module-path} [{module-path}...]\n"
         + "\n"
-        + "Build all packages:\n"
+        + "Build all modules:\n"
         + "\n"
         + "  $ bake all"
     );

@@ -14,6 +14,6 @@ public interface Handler<A extends Annotation> {
   /** Returns the annotation associated with this handler. */
   A annotation();
 
-  /** Bakes the associated package. */
+  /** Bakes the associated module. */
   void bake() throws IOException, BakeError;
 }

@@ -2,7 +2,7 @@
 package bake.tool.java;
 
 import bake.tool.BakeError;
-import bake.tool.BakePackage;
+import bake.tool.Module;
 import bake.tool.Files;
 import bake.tool.Log;
 import com.google.common.collect.Lists;
@@ -36,20 +36,20 @@ class FatJar extends ExecutableJar {
   }
 
   /**
-   * Creates an executable jar containing all of this package's dependencies.
+   * Creates an executable jar containing all of this module's dependencies.
    */
   void makeJar() throws BakeError, IOException {
     List<File> jars = Lists.newArrayList();
 
-    // Put this package's classes and its resources first.
+    // Put this module's classes and its resources first.
     jars.add(handler.classesJar());
     for (File jar : handler.jars()) jars.add(jar);
 
     // Other internal dependencies.
-    for (BakePackage bakePackage : handler.allPackages()) {
-      if (bakePackage != handler.bakePackage) {
-        jars.add(bakePackage.javaHandler().classesJar());
-        for (File jar : bakePackage.javaHandler().jars()) {
+    for (Module module : handler.allModules()) {
+      if (module != handler.module) {
+        jars.add(module.javaHandler().classesJar());
+        for (File jar : module.javaHandler().jars()) {
           jars.add(jar);
         }
       }

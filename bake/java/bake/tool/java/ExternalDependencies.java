@@ -1,12 +1,8 @@
 // Copyright 2011 Square, Inc.
 package bake.tool.java;
 
-import bake.tool.BakeError;
-import bake.tool.BakePackage;
-import bake.tool.Files;
-import bake.tool.Log;
-import bake.tool.LogPrefixes;
-import bake.tool.Repository;
+import bake.tool.*;
+import bake.tool.Module;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.ivy.Ivy;
@@ -36,7 +32,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * External dependencies for a Java package. This class isolates Bake from
+ * External dependencies for a Java module. This class isolates Bake from
  * Ivy.
  *
  * @author Bob Lee (bob@squareup.com)
@@ -48,12 +44,12 @@ class ExternalDependencies {
   }
 
   final JavaHandler javaHandler;
-  final BakePackage bakePackage;
+  final Module module;
   final Repository repository;
 
   ExternalDependencies(JavaHandler javaHandler) {
     this.javaHandler = javaHandler;
-    this.bakePackage = javaHandler.bakePackage;
+    this.module = javaHandler.module;
     this.repository = javaHandler.repository;
   }
 
@@ -80,7 +76,7 @@ class ExternalDependencies {
       // dependencies?
 
       ModuleRevisionId id = ModuleRevisionId.newInstance(
-          "internal", bakePackage.name(), "working");
+          "internal", module.name(), "working");
 
       // TODO: Skip this if dependency list hasn't changed.
       Ivy ivy = newIvy();
@@ -89,15 +85,15 @@ class ExternalDependencies {
       if (report.hasError()) {
         // Ivy should have logged any errors.
         throw new BakeError("Failed to resolve external dependencies for "
-            + bakePackage.name() + ".");
+            + module.name() + ".");
       }
 
       /*
-       * Copy artifacts from local cache to build directory. All Bake packages
+       * Copy artifacts from local cache to build directory. All Bake modules
        * share the same directory.
        *
        * Note: It's important that we use the module ID returned by resolve().
-       * It creates a pseudo module (named "{package-name}-caller") that will
+       * It creates a pseudo module (named "{module-name}-caller") that will
        * be re-used here.
        */
       File ivyDirectory = repository.outputDirectory("ivy/libs");
@@ -179,23 +175,23 @@ class ExternalDependencies {
    * we can avoid running Ivy (right?).
    */
   private Set<String> allExternalDependencies() throws BakeError, IOException {
-    Set<BakePackage> visited = Sets.newHashSet();
+    Set<Module> visited = Sets.newHashSet();
     Set<String> dependencies = Sets.newHashSet();
-    addExternalDependencies(visited, dependencies, bakePackage);
+    addExternalDependencies(visited, dependencies, module);
     return dependencies;
   }
 
-  private void addExternalDependencies(Set<BakePackage> visited,
-      Set<String> dependencies, BakePackage bakePackage) throws BakeError,
+  private void addExternalDependencies(Set<Module> visited,
+      Set<String> dependencies, Module module) throws BakeError,
       IOException {
-    if (visited.contains(bakePackage)) return;
-    visited.add(bakePackage);
-    for (String dependency : bakePackage.javaHandler().java.dependencies()) {
+    if (visited.contains(module)) return;
+    visited.add(module);
+    for (String dependency : module.javaHandler().java.dependencies()) {
       if (ExternalDependency.isExternal(dependency)) {
         dependencies.add(dependency);
       } else {
-        BakePackage otherPackage = repository.packageByName(dependency);
-        addExternalDependencies(visited, dependencies, otherPackage);
+        Module otherModule = repository.moduleByName(dependency);
+        addExternalDependencies(visited, dependencies, otherModule);
       }
     }
   }
@@ -203,7 +199,7 @@ class ExternalDependencies {
   private boolean wroteIvyXml;
 
   /**
-   * Transitively writes dummy Ivy XML files (one per Bake package) that can be
+   * Transitively writes dummy Ivy XML files (one per Bake module) that can be
    * used to resolve external dependencies.
    */
   private void writeIvyXml() throws IOException, BakeError {
@@ -213,18 +209,18 @@ class ExternalDependencies {
     if (wroteIvyXml) return;
     wroteIvyXml = true;
 
-    // Write Ivy XML for this package.
+    // Write Ivy XML for this module.
     File ivyDirectory = ivyDirectory();
-    File ivyFile = new File(ivyDirectory, bakePackage.name() + ".xml");
+    File ivyFile = new File(ivyDirectory, module.name() + ".xml");
 
     OutputStreamWriter out = new OutputStreamWriter(
         new FileOutputStream(ivyFile), "UTF-8");
     try {
       out.write("<ivy-module version=\"2.0\">\n");
 
-      // Use "internal" as the org for internal packages.
+      // Use "internal" as the org for internal modules.
       out.write("<info organisation=\"internal\" module=\""
-          + bakePackage.name() + "\" revision=\"working\"/>\n");
+          + module.name() + "\" revision=\"working\"/>\n");
 
       // We don't use Ivy to manage internal artifacts. The 'publications'
       // element must be explicit, or else Ivy assumes one default artifact.
@@ -254,7 +250,7 @@ class ExternalDependencies {
     // Write Ivy XML transitively.
     for (String dependency : javaHandler.java.dependencies()) {
       if (!ExternalDependency.isExternal(dependency)) {
-        BakePackage other = repository.packageByName(dependency);
+        Module other = repository.moduleByName(dependency);
         other.javaHandler().external.writeIvyXml();
       }
     }
@@ -265,7 +261,7 @@ class ExternalDependencies {
   }
 
   File ivyResultsFile() {
-    return new File(bakePackage.outputDirectory(), "ivy.results");
+    return new File(module.outputDirectory(), "ivy.results");
   }
 
   /** Persisted Ivy results. */

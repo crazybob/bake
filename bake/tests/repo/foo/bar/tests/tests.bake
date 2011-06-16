@@ -3,4 +3,4 @@
       "external:junit/junit@4.+",
       "foo.bar"
   }
-) package foo.bar.tests;
+) module foo.bar.tests;
