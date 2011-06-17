@@ -70,7 +70,7 @@ class OneJar { // TODO: Extend ExecutableJar.
       }
 
       // The last time the dependency list was modified.
-      lastModified = Math.max(lastModified, handler.external.lastModified());
+      lastModified = Math.max(lastModified, handler.externalDependencies.lastModified());
 
       if (lastModified <= oneJarFile.lastModified()) {
         Log.i("%s is up to date.", handler.repository.relativePath(oneJarFile));

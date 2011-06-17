@@ -2,30 +2,40 @@
 package bake.tool.java;
 
 import bake.Java;
-import bake.tool.*;
+import bake.tool.BakeError;
+import bake.tool.Files;
+import bake.tool.Handler;
+import bake.tool.Log;
 import bake.tool.Module;
+import bake.tool.Repository;
+import bake.tool.Task;
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.io.ByteStreams;
 
 import javax.inject.Inject;
+import javax.inject.Provider;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+
+import static bake.tool.java.ExternalDependency.isExternal;
 
 /**
  * Bakes Java libraries.
@@ -39,23 +49,18 @@ public class JavaHandler implements Handler<Java> {
   final Java java;
   final Repository repository;
   final Module module;
-  final ExternalDependencies external;
-  final IncrementalCompiler.Builder compilerBuilder;
+  final ExternalDependencies externalDependencies;
+  final Provider<IncrementalCompiler> compilerProvider;
 
   final ExecutableJar executableJar = new FatJar(this);
 
-  /** True if this is a test module. */
-  final boolean testModule;
-
-  @Inject JavaHandler(Java java, Repository repository,
-      Module module, IncrementalCompiler.Builder compilerBuilder) {
+  @Inject JavaHandler(Java java, Repository repository, Module module,
+      Provider<IncrementalCompiler> compilerProvider, ExternalDependencies externalDependencies) {
     this.java = java;
     this.repository = repository;
     this.module = module;
-    this.compilerBuilder = compilerBuilder;
-    this.external = new ExternalDependencies(this);
-
-    this.testModule = module.name().endsWith("." + TEST_MODULE_NAME);
+    this.compilerProvider = compilerProvider;
+    this.externalDependencies = externalDependencies;
   }
 
   public Java annotation() {
@@ -67,19 +72,47 @@ public class JavaHandler implements Handler<Java> {
     return module.outputDirectory("classes");
   }
 
-  private Map<ExternalArtifact.Id, ExternalArtifact> externalArtifacts;
-
-  /** Returns all external artifacts required by this module. */
-  Map<ExternalArtifact.Id, ExternalArtifact> externalArtifacts() {
-    return externalArtifacts;
+  /** Returns the destination directory for test classes. */
+  private File testClassesDirectory() throws IOException {
+    return module.outputDirectory("test-classes");
   }
 
   public void bake() throws IOException, BakeError {
-    externalArtifacts = external.retrieveAll();
-    new Intellij(this).bake();
-    compileAll(new CompilationContext(externalArtifacts));
-    if (!java.mainClass().equals("")) executableJar.bake();
-    if (!testModule) runAllTests();
+    // Resolve external dependencies.
+    execute(new JavaTask() {
+      @Override public void execute(JavaHandler handler) throws BakeError, IOException {
+        handler.externalDependencies.resolve();
+      }
+    });
+
+//    // TODO: Export to other IDEs and build systems (like POM).
+//    new Intellij(this).bake();
+//    compileAll(new CompilationContext(externalDependencies));
+//    if (!java.mainClass().equals("")) executableJar.bake();
+//    runAllTests();
+//
+//    state = State.BAKED;
+  }
+
+  /**
+   * Executes the given task against each module this module depends on and then against this
+   * module.
+   */
+  public void execute(final JavaTask javaTask) throws BakeError, IOException {
+    module.execute(Java.class, new Task() {
+      @Override public void execute(Module module) throws BakeError, IOException {
+        javaTask.execute(module.javaHandler());
+      }
+    });
+  }
+
+  /** Returns the set of direct dependencies for this module. */
+  public Collection<Module> directDependencies() throws BakeError, IOException {
+    List<Module> directDependencies = Lists.newArrayList();
+    for (String dependency : meld(java.dependencies(), java.testDependencies())) {
+      if (!isExternal(dependency)) directDependencies.add(repository.moduleByName(dependency));
+    }
+    return directDependencies;
   }
 
   /**
@@ -127,7 +160,7 @@ public class JavaHandler implements Handler<Java> {
       throws BakeError {
     List<ExternalDependency> externalDependencies = Lists.newArrayList();
     for (String dependency : java.dependencies()) {
-      if (ExternalDependency.isExternal(dependency)) {
+      if (isExternal(dependency)) {
         externalDependencies.add(ExternalDependency.parse(dependency));
       }
     }
@@ -159,57 +192,66 @@ public class JavaHandler implements Handler<Java> {
     }
   }
 
-  /** Compiles this module and calls {@link #jarClasses()}. */
+  /**
+   * Compiles this module and calls {@link #jarClasses()}. Only called once.
+   */
   void compileThis(CompilationContext context) throws BakeError,
       IOException {
     if (hasSourceDirectories()) {
-
-      // TODO: We want to support modules that do nothing but aggregate
-      // other dependencies. Use a different Bake annotation? Should we go
-      // ahead and include transitive dependencies in the compilation
-      // classpath? That wouldn't be as clean...
-
       Log.i("Compiling %s...", module.name());
 
-      // Add first-order dependencies to classpath.
-      for (String dependency : java.dependencies()) {
-        if (ExternalDependency.isExternal(dependency)) {
-          ExternalDependency parsed = ExternalDependency.parse(dependency);
-          ExternalArtifact artifact
-              = context.externalArtifacts.get(parsed.jarId());
-          compilerBuilder.appendClasspath(artifact.file);
-        } else {
-          Module otherModule = repository.moduleByName(dependency);
-          JavaHandler otherJava = otherModule.javaHandler();
-          compilerBuilder.appendClasspath(otherJava.classesJar());
-          compilerBuilder.appendClasspath(otherJava.jars());
-        }
-      }
-
-      // Pre-compiled jars in this module.
-      for (File jar : jars()) compilerBuilder.appendClasspath(jar);
-
+      // Compile main classes.
+      IncrementalCompiler mainCompiler = compilerProvider.get();
+      appendCompilationDependencies(mainCompiler, context, java.dependencies());
+      for (File jar : jars()) mainCompiler.appendClasspath(jar);
       for (String sourceDirectory : java.source()) {
-        compilerBuilder.appendSourceDirectory(
-            new File(module.directory(), sourceDirectory));
+        mainCompiler.appendSourceDirectory(new File(module.directory(), sourceDirectory));
       }
-
-      compilerBuilder.destinationDirectory(classesDirectory())
+      mainCompiler.destinationDirectory(classesDirectory())
         .database(new File(module.outputDirectory(), "jmake.db"))
-        .build()
+        .compile();
+
+      // Compile test classes.
+      IncrementalCompiler testCompiler = compilerProvider.get();
+      testCompiler.appendClasspath(classesDirectory());
+      for (File jar : jars()) testCompiler.appendClasspath(jar);
+      appendCompilationDependencies(testCompiler, context, java.dependencies());
+      appendCompilationDependencies(testCompiler, context, java.testDependencies());
+      for (String sourceDirectory : java.testSource()) {
+        testCompiler.appendSourceDirectory(new File(module.directory(), sourceDirectory));
+      }
+      testCompiler.destinationDirectory(testClassesDirectory())
+        .database(new File(module.outputDirectory(), "jmake-tests.db"))
         .compile();
     } else {
-      Log.i("%s has no source directories.", module.name());
+      Log.v("%s has no source directories.", module.name());
     }
 
     jarClasses();
   }
 
+  private void appendCompilationDependencies(IncrementalCompiler compiler,
+      CompilationContext context, String[] dependencies) throws BakeError, IOException {
+    for (String dependency : dependencies) {
+      if (isExternal(dependency)) {
+        ExternalDependency parsed = ExternalDependency.parse(dependency);
+        ExternalArtifact artifact
+            = context.externalDependencies.get(parsed.jarId());
+        compiler.appendClasspath(artifact.file);
+      } else {
+        Module otherModule = repository.moduleByName(dependency);
+        JavaHandler otherJava = otherModule.javaHandler();
+        compiler.appendClasspath(otherJava.classesJar());
+        compiler.appendClasspath(otherJava.jars());
+      }
+    }
+  }
+
   /** Transitively compiles internal modules that this module depends on. */
   private void compileDependencies(CompilationContext context) throws BakeError,
       IOException {
-    for (String dependency : java.dependencies()) {
-      if (!ExternalDependency.isExternal(dependency)) {
+    for (String dependency : directDependencies()) {
+      if (!isExternal(dependency)) {
         Module otherModule = repository.moduleByName(dependency);
         otherModule.javaHandler().compileAll(context);
       }
@@ -220,25 +262,29 @@ public class JavaHandler implements Handler<Java> {
    * Returns true if this Java module has source code directories.
    */
   private boolean hasSourceDirectories() {
-    for (String sourceDirectory : java.source()) {
-      if (new File(module.directory(), sourceDirectory).exists()) {
-        return true;
-      }
+    for (String sourceDirectory : meld(java.source(), java.testSource())) {
+      if (new File(module.directory(), sourceDirectory).exists()) return true;
     }
     return false;
+  }
+
+  /** Combines elements from each array into a single set. */
+  static <T> Set<T> meld(T[]... arrays) {
+    Set<T> set = Sets.newLinkedHashSet();
+    for (T[] array : arrays) set.addAll(Arrays.asList(array));
+    return set;
   }
 
   /** Maintains context between Bake modules during compilation. */
   static class CompilationContext {
 
-    final Map<ExternalArtifact.Id, ExternalArtifact> externalArtifacts;
+    final ExternalDependencies externalDependencies;
 
     /** Handlers that are currently being compiled. */
     final Set<JavaHandler> compiling = Sets.newLinkedHashSet();
 
-    CompilationContext(
-        Map<ExternalArtifact.Id, ExternalArtifact> externalArtifacts) {
-      this.externalArtifacts = externalArtifacts;
+    CompilationContext(ExternalDependencies externalDependencies) {
+      this.externalDependencies = externalDependencies;
     }
   }
 
@@ -260,7 +306,7 @@ public class JavaHandler implements Handler<Java> {
       throws BakeError, IOException {
     // TODO: Order these breadth first.
     for (String dependencyId : java.dependencies()) {
-      if (!ExternalDependency.isExternal(dependencyId)) {
+      if (!isExternal(dependencyId)) {
         Module otherModule = repository.moduleByName(dependencyId);
         if (dependencies.add(otherModule)) {
           otherModule.javaHandler().addModuleDependenciesTo(dependencies);

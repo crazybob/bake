@@ -27,8 +27,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 /**
  * Incrementally compiles Java source code. Decouples Bake from jmake.
  *
@@ -36,22 +34,68 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 class IncrementalCompiler {
 
-  private final List<File> classpath;
-  private final List<File> sourceDirectories;
-  private final List<String> sourceFiles;
-  private final File destinationDirectory;
-  private final File database;
   private final Diagnostics diagnostics;
 
-  IncrementalCompiler(List<File> classpath, List<File> sourceDirectories,
-      List<String> sourceFiles, File destinationDirectory, File database,
-      Diagnostics diagnostics) {
-    this.classpath = classpath;
-    this.sourceDirectories = sourceDirectories;
-    this.sourceFiles = sourceFiles;
-    this.destinationDirectory = destinationDirectory;
-    this.database = database;
+  @Inject IncrementalCompiler(Diagnostics diagnostics) {
     this.diagnostics = diagnostics;
+  }
+
+  private final List<File> classpath = Lists.newArrayList();
+
+  /**
+   * Appends a jar or class directory to the compiler classpath.
+   */
+  IncrementalCompiler appendClasspath(File file) {
+    classpath.add(file);
+    return this;
+  }
+
+  /**
+   * Appends jar or class directories to the compiler classpath.
+   */
+  IncrementalCompiler appendClasspath(Collection<? extends File> files) {
+    classpath.addAll(files);
+    return this;
+  }
+
+  private final List<File> sourceDirectories = Lists.newArrayList();
+  private final List<String> sourceFiles = Lists.newArrayList();
+
+  /**
+   * Adds a directory of Java files that should be compiled.
+   */
+  IncrementalCompiler appendSourceDirectory(File directory) {
+    sourceDirectories.add(directory);
+
+    // Recursively find .java files.
+    for (File file : directory.listFiles()) {
+      if (file.getPath().endsWith(".java")) {
+        sourceFiles.add(file.getPath());
+      } else if (file.isDirectory()) {
+        appendSourceDirectory(file);
+      }
+    }
+    return this;
+  }
+
+  private File destinationDirectory;
+
+  /**
+   * Specifies a destination directory for the class files.
+   */
+  IncrementalCompiler destinationDirectory(File directory) {
+    this.destinationDirectory = directory;
+    return this;
+  }
+
+  private File database;
+
+  /**
+   * Database used to store dependency metadata.
+   */
+  IncrementalCompiler database(File file) {
+    this.database = file;
+    return this;
   }
 
   /**
@@ -124,87 +168,6 @@ class IncrementalCompiler {
       // jmake. Log it here. This should only occur if there's a bug in Bake.
       e.printStackTrace();
       throw e;
-    }
-  }
-
-  /** Builds a Java compiler. */
-  static class Builder {
-
-    private final Diagnostics diagnostics;
-
-    @Inject Builder(Diagnostics diagnostics) {
-      this.diagnostics = diagnostics;
-    }
-
-    private final List<File> classpath = Lists.newArrayList();
-
-    /**
-     * Appends a jar or class directory to the compiler classpath.
-     */
-    Builder appendClasspath(File file) {
-      classpath.add(file);
-      return this;
-    }
-
-    /**
-     * Appends jar or class directories to the compiler classpath.
-     */
-    Builder appendClasspath(Collection<? extends File> files) {
-      classpath.addAll(files);
-      return this;
-    }
-
-    private final List<File> sourceDirectories = Lists.newArrayList();
-    private final List<String> sourceFiles = Lists.newArrayList();
-
-    /**
-     * Adds a directory of Java files that should be compiled.
-     */
-    Builder appendSourceDirectory(File directory) {
-      sourceDirectories.add(directory);
-
-      // Recursively find .java files.
-      for (File file : directory.listFiles()) {
-        if (file.getPath().endsWith(".java")) {
-          sourceFiles.add(file.getPath());
-        } else if (file.isDirectory()) {
-          appendSourceDirectory(file);
-        }
-      }
-      return this;
-    }
-
-    private File destinationDirectory;
-
-    /**
-     * Specifies a destination directory for the class files.
-     */
-    Builder destinationDirectory(File directory) {
-      this.destinationDirectory = directory;
-      return this;
-    }
-
-    private File database;
-
-    /**
-     * Database used to store dependency metadata.
-     */
-    Builder database(File file) {
-      this.database = file;
-      return this;
-    }
-
-    /**
-     * Builds the Java compiler.
-     */
-    IncrementalCompiler build() {
-      return new IncrementalCompiler(
-          classpath,
-          sourceDirectories,
-          sourceFiles,
-          checkNotNull(destinationDirectory, "destinationDirectory"),
-          checkNotNull(database, "database"),
-          diagnostics);
     }
   }
 

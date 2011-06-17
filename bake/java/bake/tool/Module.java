@@ -3,6 +3,7 @@ package bake.tool;
 
 import bake.Java;
 import bake.tool.java.JavaHandler;
+import com.google.common.collect.Maps;
 import com.google.inject.AbstractModule;
 import com.google.inject.Injector;
 
@@ -22,12 +23,12 @@ public class Module {
   private final Injector injector;
   private final String name;
   private final Repository repository;
-  private final Map<Class<? extends Annotation>, Handler> handlers;
+  private final Map<Class<? extends Annotation>, Handler<?>> handlers;
   private final File directory;
   private final File output;
 
   Module(Injector injector, String name, Repository repository,
-         Map<Class<? extends Annotation>, Handler> handlers,
+         Map<Class<? extends Annotation>, Handler<?>> handlers,
          File directory) throws IOException {
     this.injector = injector;
     this.name = name;
@@ -90,7 +91,7 @@ public class Module {
   }
 
   /** Returns a map from annotation type to the handler for that type. */
-  public Map<Class<? extends Annotation>, Handler> handlers() {
+  public Map<Class<? extends Annotation>, Handler<?>> handlers() {
     return Collections.unmodifiableMap(handlers);
   }
 
@@ -106,13 +107,6 @@ public class Module {
    */
   public File outputDirectory() {
     return this.output;
-  }
-
-  /**
-   * Returns the external libs directory for this module.
-   */
-  public File externalLibs() throws IOException {
-    return outputDirectory("external");
   }
 
   /**
@@ -141,5 +135,45 @@ public class Module {
         });
 
     return handlerInjector.getInstance(handlerType);
+  }
+
+  /** State of a task for a given module. */
+  private enum TaskState { RUNNING, DONE }
+
+  /**
+   * Executes the given task against each module this module depends on and then against this
+   * module. Uses dependencies from handler of the specified type.
+   */
+  public void execute(Class<? extends Annotation> handlerType, Task task) throws BakeError,
+      IOException {
+    execute(Maps.<Module, TaskState>newHashMap(), handlerType, task);
+  }
+
+  /**
+   * Executes the given task against each module this module depends on and then against this
+   * module. Uses states to detect circular dependencies and avoid duplication.
+   */
+  private void execute(Map<Module, TaskState> states, Class<? extends Annotation> handlerType,
+      Task task) throws BakeError, IOException {
+    TaskState taskState = states.get(this);
+    if (taskState == TaskState.DONE) {
+      Log.v("Already executed %s for %s.", task, name);
+      return;
+    }
+    if (taskState == TaskState.RUNNING) {
+      // TODO: Output path.
+      throw new BakeError("Circular dependency in " + name + ".");
+    }
+    states.put(this, TaskState.RUNNING);
+
+    // Execute against dependencies first.
+    for (Module dependency : handlers.get(handlerType).directDependencies()) {
+      dependency.execute(states, handlerType, task);
+    }
+
+    // Execute against this module.
+    task.execute(this);
+
+    states.put(this, TaskState.DONE);
   }
 }

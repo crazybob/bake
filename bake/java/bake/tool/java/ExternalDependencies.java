@@ -1,8 +1,13 @@
 // Copyright 2011 Square, Inc.
 package bake.tool.java;
 
-import bake.tool.*;
+import bake.Java;
+import bake.tool.BakeError;
+import bake.tool.Files;
+import bake.tool.Log;
+import bake.tool.LogPrefixes;
 import bake.tool.Module;
+import bake.tool.Repository;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.ivy.Ivy;
@@ -16,6 +21,7 @@ import org.apache.ivy.core.settings.IvySettings;
 import org.apache.ivy.util.AbstractMessageLogger;
 import org.apache.ivy.util.Message;
 
+import javax.inject.Inject;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -31,9 +37,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static bake.tool.java.JavaHandler.meld;
+
 /**
- * External dependencies for a Java module. This class isolates Bake from
- * Ivy.
+ * Resolved external dependencies. This class isolates Bake from Ivy.
  *
  * @author Bob Lee (bob@squareup.com)
  */
@@ -43,76 +50,91 @@ class ExternalDependencies {
     Message.setDefaultLogger(new IvyLogger());
   }
 
-  final JavaHandler javaHandler;
-  final Module module;
   final Repository repository;
+  final Module module;
+  final JavaHandler handler;
+  final Java java;
 
-  ExternalDependencies(JavaHandler javaHandler) {
-    this.javaHandler = javaHandler;
-    this.module = javaHandler.module;
-    this.repository = javaHandler.repository;
+  @Inject ExternalDependencies(Repository repository, Module module, Java java,
+      JavaHandler handler) {
+    this.repository = repository;
+    this.module = module;
+    this.java = java;
+    this.handler = handler;
+  }
+
+  /** Returns the artifact associated with the given ID. */
+  ExternalArtifact get(ExternalArtifact.Id id) {
+    // The test artifacts are a superset of the main artifacts.
+    return ivyResults.testArtifacts.get(id);
+  }
+
+  IvyResults ivyResults;
+
+  /** Returns the transitive closure of the main dependencies. */
+  public Map<ExternalArtifact.Id, ExternalArtifact> main() {
+    return ivyResults.mainArtifacts;
+  }
+
+  /** Returns the transitive closure of the test dependencies. */
+  public Map<ExternalArtifact.Id, ExternalArtifact> test() {
+    return ivyResults.testArtifacts;
   }
 
   /**
-   * Transitively resolves all external dependencies. Returns references to the
+   * Transitively resolves all external dependencies in the given list. Returns references to the
    * jars.
    */
-  Map<ExternalArtifact.Id, ExternalArtifact> retrieveAll()
-      throws BakeError, IOException {
+  void resolve() throws BakeError, IOException {
     Set<String> allExternalDependencies = allExternalDependencies();
+
+
     IvyResults ivyResults = readIvyResults();
-    if (ivyResults != null
-        && allExternalDependencies.equals(ivyResults.allExternalDependencies)) {
+    if (ivyResults != null && allExternalDependencies.equals(ivyResults.allExternalDependencies)) {
       Log.i("External dependencies are up to date.");
-      return ivyResults.artifacts;
+      this.ivyResults = ivyResults;
+      return;
     }
-
-    Log.i("Retrieving external dependencies...");
     
+    Log.i("Retrieving external dependencies...");
     writeIvyXml();
-
     try {
-      // TODO: How do we force the download of source jars for transitive
-      // dependencies?
-
-      ModuleRevisionId id = ModuleRevisionId.newInstance(
-          "internal", module.name(), "working");
-
-      // TODO: Skip this if dependency list hasn't changed.
       Ivy ivy = newIvy();
-      ResolveReport report = ivy.resolve(id, new ResolveOptions(), true);
-
-      if (report.hasError()) {
-        // Ivy should have logged any errors.
-        throw new BakeError("Failed to resolve external dependencies for "
-            + module.name() + ".");
-      }
-
-      /*
-       * Copy artifacts from local cache to build directory. All Bake modules
-       * share the same directory.
-       *
-       * Note: It's important that we use the module ID returned by resolve().
-       * It creates a pseudo module (named "{module-name}-caller") that will
-       * be re-used here.
-       */
-      File ivyDirectory = repository.outputDirectory("ivy/libs");
-      ivy.retrieve(report.getModuleDescriptor().getModuleRevisionId(),
-          ivyDirectory.getPath()
-              + "/[organization]/[module]/[type]/[artifact]-[revision].[ext]",
-          new RetrieveOptions());
-
-      @SuppressWarnings("unchecked")
-      List<IvyNode> nodes = report.getDependencies();
-      Map<ExternalArtifact.Id, ExternalArtifact> artifacts
-          = nodesToArtifacts(nodes, ivyDirectory);
-
-      writeIvyResults(new IvyResults(allExternalDependencies, artifacts));
-      
-      return artifacts;
+      Map<ExternalArtifact.Id, ExternalArtifact> mainArtifacts = retrieveArtifacts(ivy, "default");
+      Map<ExternalArtifact.Id, ExternalArtifact> testArtifacts = retrieveArtifacts(ivy, "test");
+      writeIvyResults(new IvyResults(allExternalDependencies, mainArtifacts, testArtifacts));
     } catch (ParseException e) {
       throw new AssertionError(e);
     }
+  }
+
+  private Map<ExternalArtifact.Id, ExternalArtifact> retrieveArtifacts(Ivy ivy,
+      String configuration) throws ParseException, IOException, BakeError {
+    ModuleRevisionId id = ModuleRevisionId.newInstance("internal", module.name(), "working");
+    ResolveOptions options = new ResolveOptions();
+    options.setConfs(new String[]{configuration});
+    ResolveReport report = ivy.resolve(id, options, true);
+
+    if (report.hasError()) {
+      // Ivy should have logged any errors.
+      throw new BakeError("Failed to resolve external dependencies for " + module.name() + ".");
+    }
+
+    /*
+     * Copy artifacts from local cache to build directory. All Bake modules
+     * share the same directory.
+     *
+     * Note: It's important that we use the module ID returned by resolve().
+     * It creates a pseudo module (named "{module-name}-caller") that will
+     * be re-used here.
+     */
+    File ivyDirectory = repository.outputDirectory("ivy/libs");
+    ivy.retrieve(report.getModuleDescriptor().getModuleRevisionId(),
+        ivyDirectory.getPath() + "/[organization]/[module]/[type]/[artifact]-[revision].[ext]",
+        new RetrieveOptions());
+
+    @SuppressWarnings("unchecked") List<IvyNode> nodes = report.getDependencies();
+    return nodesToArtifacts(nodes, ivyDirectory);
   }
 
   /** Creates one or more artifacts for each node. */
@@ -175,23 +197,36 @@ class ExternalDependencies {
    * we can avoid running Ivy (right?).
    */
   private Set<String> allExternalDependencies() throws BakeError, IOException {
+    final Set<String> allDependencies = Sets.newHashSet();
+    handler.execute(new JavaTask() {
+      @Override public void execute(JavaHandler handler) throws BakeError, IOException {
+        allDependencies.add(handler.directDependencies());
+      }
+    });
+
+
     Set<Module> visited = Sets.newHashSet();
-    Set<String> dependencies = Sets.newHashSet();
-    addExternalDependencies(visited, dependencies, module);
-    return dependencies;
+    Set<String>
+
+    // Use the test dependencies for the root module.
+    addExternalDependencies(visited, allDependencies, module, java.testDependencies());
+    return allDependencies;
   }
 
   private void addExternalDependencies(Set<Module> visited,
-      Set<String> dependencies, Module module) throws BakeError,
+      Set<String> dependencies, Module module, String[] deps) throws BakeError,
       IOException {
     if (visited.contains(module)) return;
     visited.add(module);
-    for (String dependency : module.javaHandler().java.dependencies()) {
+    for (String dependency : dependencies) {
       if (ExternalDependency.isExternal(dependency)) {
         dependencies.add(dependency);
       } else {
         Module otherModule = repository.moduleByName(dependency);
-        addExternalDependencies(visited, dependencies, otherModule);
+
+        // Don't include test dependencies from dependencies.
+        addExternalDependencies(visited, dependencies, otherModule,
+            module.javaHandler().java.dependencies());
       }
     }
   }
@@ -209,10 +244,7 @@ class ExternalDependencies {
     if (wroteIvyXml) return;
     wroteIvyXml = true;
 
-    // Write Ivy XML for this module.
-    File ivyDirectory = ivyDirectory();
-    File ivyFile = new File(ivyDirectory, module.name() + ".xml");
-
+    File ivyFile = new File(ivyDirectory(), module.name() + ".xml");
     OutputStreamWriter out = new OutputStreamWriter(
         new FileOutputStream(ivyFile), "UTF-8");
     try {
@@ -227,19 +259,8 @@ class ExternalDependencies {
       out.write("<publications/>\n");
 
       out.write("<dependencies>\n");
-      for (String dependency : javaHandler.java.dependencies()) {
-        if (ExternalDependency.isExternal(dependency)) {
-          ExternalDependency ed = ExternalDependency.parse(dependency);
-          out.write("<dependency org=\"" + ed.organization + "\""
-              + " name=\"" + ed.name + "\""
-              + " rev=\"" + ed.ivyVersion() + "\""
-              + " conf=\"*->default,compile,runtime,sources\""
-              + "/>\n");
-        } else {
-          out.write("<dependency org=\"internal\" name=\"" + dependency
-              + "\" rev=\"working\" changing=\"true\"/>\n");
-        }
-      }
+      writeDependencies(out, java.dependencies(), false);
+      writeDependencies(out, java.testDependencies(), true);
       out.write("</dependencies>\n");
 
       out.write("</ivy-module>\n");
@@ -248,10 +269,32 @@ class ExternalDependencies {
     }
 
     // Write Ivy XML transitively.
-    for (String dependency : javaHandler.java.dependencies()) {
+    for (String dependency : meld(java.dependencies(), java.testDependencies())) {
       if (!ExternalDependency.isExternal(dependency)) {
         Module other = repository.moduleByName(dependency);
-        other.javaHandler().external.writeIvyXml();
+        other.javaHandler().externalDependencies.writeIvyXml();
+      }
+    }
+  }
+
+  private void writeDependencies(OutputStreamWriter out, String[] dependencies,
+      boolean test) throws BakeError,
+      IOException {
+    String configuration = test ? "test" : "*";
+
+    for (String dependency : dependencies) {
+      if (ExternalDependency.isExternal(dependency)) {
+        ExternalDependency ed = ExternalDependency.parse(dependency);
+        out.write("<dependency org=\"" + ed.organization + "\""
+            + " name=\"" + ed.name + "\""
+            + " rev=\"" + ed.ivyVersion() + "\""
+            + " conf=\"" + configuration + "->default,compile,runtime,sources\""
+            + "/>\n");
+      } else {
+        out.write("<dependency org=\"internal\" name=\"" + dependency
+            + "\" rev=\"working\" changing=\"true\""
+            + " conf=\"" + configuration + "->default\""
+            + "/>\n");
       }
     }
   }
@@ -268,26 +311,32 @@ class ExternalDependencies {
   static class IvyResults implements Serializable {
 
     final Set<String> allExternalDependencies;
-    final Map<ExternalArtifact.Id, ExternalArtifact> artifacts;
+    final Map<ExternalArtifact.Id, ExternalArtifact> mainArtifacts;
+    final Map<ExternalArtifact.Id, ExternalArtifact> testArtifacts;
 
     IvyResults(Set<String> allExternalDependencies,
-        Map<ExternalArtifact.Id, ExternalArtifact> artifacts) {
+        Map<ExternalArtifact.Id, ExternalArtifact> mainArtifacts,
+        Map<ExternalArtifact.Id, ExternalArtifact> testArtifacts) {
       this.allExternalDependencies = allExternalDependencies;
-      this.artifacts = artifacts;
+      this.testArtifacts = testArtifacts;
+      this.mainArtifacts = mainArtifacts;
     }
   }
 
-  IvyResults readIvyResults() throws IOException {
+  IvyResults readIvyResults() {
     File file = ivyResultsFile();
     if (!file.exists()) return null;
-    FileInputStream fin = new FileInputStream(file);
     try {
-      return (IvyResults) new ObjectInputStream(
-          new BufferedInputStream(fin)).readObject();
-    } catch (ClassNotFoundException e) {
-      throw new AssertionError(e);
-    } finally {
-      fin.close();
+      FileInputStream fin = new FileInputStream(file);
+      try {
+        return (IvyResults) new ObjectInputStream(
+            new BufferedInputStream(fin)).readObject();
+      } finally {
+        fin.close();
+      }
+    } catch (Exception e) {
+      Log.v("Error reading Ivy results: %s", e);
+      return null;
     }
   }
 

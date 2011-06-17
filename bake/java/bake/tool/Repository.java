@@ -82,6 +82,20 @@ import java.util.regex.Pattern;
   }
 
   /**
+   * Finds and parses the .bake file for the given module. Returns an
+   * existing module if we parsed it already.
+   */
+  public Module moduleByName(String name, boolean parse) throws BakeError, IOException {
+    validateModuleName(name);
+    Module module = modules.get(name);
+    if (module == null) {
+      module = moduleParser.parse(name);
+      modules.put(name, module);
+    }
+    return module;
+  }
+
+  /**
    * Returns the module name for the given .bake file or directory. Computes
    * the path to file from root and then replaces the path separator character
    * with '.'.
