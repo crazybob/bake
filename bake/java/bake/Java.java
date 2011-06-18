@@ -10,8 +10,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Defines a Java module. By convention, tests go in sub-modules named
- * {@code tests}.
+ * Defines a Java module.
  *
  * @author Bob Lee (bob@squareup.com)
  */

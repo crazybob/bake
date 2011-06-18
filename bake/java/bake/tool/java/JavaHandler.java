@@ -98,8 +98,11 @@ public class JavaHandler implements Handler<Java> {
 
     if (!java.mainClass().equals("")) executableJar.bake();
 
-//    // TODO: Export to other IDEs and build systems (like POM).
-//    runAllTests();
+    walk(new JavaTask() {
+      @Override public void execute(JavaHandler handler) throws BakeError, IOException {
+        handler.runTests();
+      }
+    });
   }
 
   /**
@@ -158,12 +161,9 @@ public class JavaHandler implements Handler<Java> {
 
   /** Adds all external jars to the given list. */
   private void addExternalJarsTo(List<File> jars) {
-    throw new UnsupportedOperationException();
-//    for (ExternalArtifact externalArtifact : externalArtifacts.values()) {
-//      if (externalArtifact.id.type == ExternalArtifact.Type.JAR) {
-//        jars.add(externalArtifact.file);
-//      }
-//    }
+    for (ExternalArtifact externalArtifact : externalDependencies.all().values()) {
+      if (externalArtifact.id.type == ExternalArtifact.Type.JAR) jars.add(externalArtifact.file);
+    }
   }
 
   /** Returns this module's first order external dependencies. */
@@ -383,46 +383,18 @@ public class JavaHandler implements Handler<Java> {
 
   // Tests:
 
-  /** Runs all tests, including transitive depdnencies. */
-  private void runAllTests() throws BakeError, IOException {
-    Log.i("Running all tests...");
-//    for (Module otherModule : allModules()) {
-//      // TODO: Run least dependent packges first.
-//      otherModule.javaHandler().findAndRunTests();
-//    }
-  }
-
-  boolean ranTests;
-
-  /** Finds the tests for this module and runs them. */
-  private void findAndRunTests() throws BakeError, IOException {
-    if (ranTests) return;
-    ranTests = true;
-
-    if (!new File(module.directory(), TEST_MODULE_NAME).exists()) {
-      Log.i("No tests found for %s.", module.name());
-      return;
-    }
-
-    Log.i("Building tests for %s...", module.name());
-    Module testModule = repository.moduleByName(
-        module.name() + "." + TEST_MODULE_NAME);
-    testModule.bake();
-
-    Log.i("Running tests for %s...", module.name());
-    testModule.javaHandler().runTests();
-  }
-
   /** Runs tests in this module. */
   private void runTests() throws BakeError, IOException {
     Set<String> testClassNames = Sets.newHashSet();
-    for (String sourceDirectory : java.source()) {
-      findTestFiles(new File(module.directory(), sourceDirectory),
-          "", testClassNames);
+    for (String sourceDirectory : java.testSource()) {
+      findTestFiles(new File(module.directory(), sourceDirectory), "", testClassNames);
     }
 
     if (testClassNames.isEmpty()) {
       Log.i("No tests found for %s.", module.name());
+
+      // We could run anyway...
+      return;
     }
 
     /*
@@ -432,11 +404,18 @@ public class JavaHandler implements Handler<Java> {
      * JUnit in the test classloader.
      */
     List<File> files = allJars();
+    files.add(testClassesDirectory());
+    for (String resourceDirectory : java.testResources()) {
+      files.add(new File(module.directory(), resourceDirectory));
+    }
+
     String classpath = Joiner.on(File.pathSeparatorChar).join(files);
 
     List<String> command = Lists.newArrayList();
-    command.addAll(Arrays.asList("java", "-classpath", classpath,
-        "org.junit.runner.JUnitCore"));
+
+    String testRunner = java.testRunner().equals("") ? "org.junit.runner.JUnitCore"
+        : java.testRunner();
+    command.addAll(Arrays.asList("java", "-classpath", classpath, testRunner));
     command.addAll(testClassNames);
 
     Log.v(command.toString());
@@ -486,6 +465,8 @@ public class JavaHandler implements Handler<Java> {
   public static void initializeModule(Repository repository,
       String moduleName) throws IOException,
       BakeError {
+    // TODO: Update for new format.
+
     Repository.validateModuleName(moduleName);
 
     // Get default annotation.
