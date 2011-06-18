@@ -37,7 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static bake.tool.java.JavaHandler.meld;
+import static bake.tool.java.ExternalDependency.isExternal;
 
 /**
  * Resolved external dependencies. This class isolates Bake from Ivy.
@@ -86,9 +86,12 @@ class ExternalDependencies {
    * jars.
    */
   void resolve() throws BakeError, IOException {
+    if (ivyResults != null) {
+      Log.v("Already resolved %s.", module.name());
+      return;
+    }
+
     Set<String> allExternalDependencies = allExternalDependencies();
-
-
     IvyResults ivyResults = readIvyResults();
     if (ivyResults != null && allExternalDependencies.equals(ivyResults.allExternalDependencies)) {
       Log.i("External dependencies are up to date.");
@@ -97,7 +100,14 @@ class ExternalDependencies {
     }
     
     Log.i("Retrieving external dependencies...");
-    writeIvyXml();
+
+    // Write Ivy XML files.
+    handler.walk(new JavaTask() {
+      @Override public void execute(JavaHandler handler) throws BakeError, IOException {
+        handler.externalDependencies.writeIvyXml();
+      }
+    });
+
     try {
       Ivy ivy = newIvy();
       Map<ExternalArtifact.Id, ExternalArtifact> mainArtifacts = retrieveArtifacts(ivy, "default");
@@ -112,7 +122,7 @@ class ExternalDependencies {
       String configuration) throws ParseException, IOException, BakeError {
     ModuleRevisionId id = ModuleRevisionId.newInstance("internal", module.name(), "working");
     ResolveOptions options = new ResolveOptions();
-    options.setConfs(new String[]{configuration});
+    options.setConfs(new String[] {configuration});
     ResolveReport report = ivy.resolve(id, options, true);
 
     if (report.hasError()) {
@@ -193,50 +203,29 @@ class ExternalDependencies {
   }
 
   /**
-   * Returns the set of all external dependencies. If this stays the same,
-   * we can avoid running Ivy (right?).
+   * Returns the set of all external dependencies. If this stays the same, we can avoid running
+   * Ivy (right?).
    */
   private Set<String> allExternalDependencies() throws BakeError, IOException {
-    final Set<String> allDependencies = Sets.newHashSet();
-    handler.execute(new JavaTask() {
-      @Override public void execute(JavaHandler handler) throws BakeError, IOException {
-        allDependencies.add(handler.directDependencies());
+    final Set<String> all = Sets.newHashSet();
+    final JavaHandler root = this.handler;
+    root.walk(new JavaTask() {
+      @Override public void execute(final JavaHandler handler) throws BakeError, IOException {
+        addExternalDependencies(handler.java.dependencies());
+        // We only care about test dependencies for the current handler.
+        if (root == handler) addExternalDependencies(handler.java.testDependencies());
+      }
+
+      private void addExternalDependencies(String[] dependencies) {
+        for (String dependency : dependencies) if (isExternal(dependency)) all.add(dependency);
       }
     });
-
-
-    Set<Module> visited = Sets.newHashSet();
-    Set<String>
-
-    // Use the test dependencies for the root module.
-    addExternalDependencies(visited, allDependencies, module, java.testDependencies());
-    return allDependencies;
-  }
-
-  private void addExternalDependencies(Set<Module> visited,
-      Set<String> dependencies, Module module, String[] deps) throws BakeError,
-      IOException {
-    if (visited.contains(module)) return;
-    visited.add(module);
-    for (String dependency : dependencies) {
-      if (ExternalDependency.isExternal(dependency)) {
-        dependencies.add(dependency);
-      } else {
-        Module otherModule = repository.moduleByName(dependency);
-
-        // Don't include test dependencies from dependencies.
-        addExternalDependencies(visited, dependencies, otherModule,
-            module.javaHandler().java.dependencies());
-      }
-    }
+    return all;
   }
 
   private boolean wroteIvyXml;
 
-  /**
-   * Transitively writes dummy Ivy XML files (one per Bake module) that can be
-   * used to resolve external dependencies.
-   */
+  /** Writes Ivy XML file for this module. */
   private void writeIvyXml() throws IOException, BakeError {
     // TODO: Add information about this bake file to BakeErrors.
     // TODO: Escape XML (just in case).
@@ -267,23 +256,14 @@ class ExternalDependencies {
     } finally {
       out.close();
     }
-
-    // Write Ivy XML transitively.
-    for (String dependency : meld(java.dependencies(), java.testDependencies())) {
-      if (!ExternalDependency.isExternal(dependency)) {
-        Module other = repository.moduleByName(dependency);
-        other.javaHandler().externalDependencies.writeIvyXml();
-      }
-    }
   }
 
   private void writeDependencies(OutputStreamWriter out, String[] dependencies,
       boolean test) throws BakeError,
       IOException {
     String configuration = test ? "test" : "*";
-
     for (String dependency : dependencies) {
-      if (ExternalDependency.isExternal(dependency)) {
+      if (isExternal(dependency)) {
         ExternalDependency ed = ExternalDependency.parse(dependency);
         out.write("<dependency org=\"" + ed.organization + "\""
             + " name=\"" + ed.name + "\""

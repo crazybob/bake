@@ -141,19 +141,21 @@ public class Module {
   private enum TaskState { RUNNING, DONE }
 
   /**
-   * Executes the given task against each module this module depends on and then against this
-   * module. Uses dependencies from handler of the specified type.
+   * Walks the module tree from bottom to top. Executes the given task against each module this
+   * module depends on and then against this module. Uses dependencies from handler of the
+   * specified type.
    */
-  public void execute(Class<? extends Annotation> handlerType, Task task) throws BakeError,
+  public void walk(Class<? extends Annotation> handlerType, Task task) throws BakeError,
       IOException {
-    execute(Maps.<Module, TaskState>newHashMap(), handlerType, task);
+    walk(Maps.<Module, TaskState>newHashMap(), handlerType, task);
   }
 
   /**
-   * Executes the given task against each module this module depends on and then against this
-   * module. Uses states to detect circular dependencies and avoid duplication.
+   * Walks the module tree from bottom to top. Executes the given task against each module this
+   * module depends on and then against this module. Uses states to detect circular dependencies
+   * and avoid duplication.
    */
-  private void execute(Map<Module, TaskState> states, Class<? extends Annotation> handlerType,
+  private void walk(Map<Module, TaskState> states, Class<? extends Annotation> handlerType,
       Task task) throws BakeError, IOException {
     TaskState taskState = states.get(this);
     if (taskState == TaskState.DONE) {
@@ -168,7 +170,7 @@ public class Module {
 
     // Execute against dependencies first.
     for (Module dependency : handlers.get(handlerType).directDependencies()) {
-      dependency.execute(states, handlerType, task);
+      dependency.walk(states, handlerType, task);
     }
 
     // Execute against this module.

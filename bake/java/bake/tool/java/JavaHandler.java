@@ -13,7 +13,6 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.io.ByteStreams;
 
@@ -23,7 +22,6 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.annotation.Annotation;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -79,7 +77,7 @@ public class JavaHandler implements Handler<Java> {
 
   public void bake() throws IOException, BakeError {
     // Resolve external dependencies.
-    execute(new JavaTask() {
+    walk(new JavaTask() {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         handler.externalDependencies.resolve();
       }
@@ -95,11 +93,11 @@ public class JavaHandler implements Handler<Java> {
   }
 
   /**
-   * Executes the given task against each module this module depends on and then against this
-   * module.
+   * Walks the module tree from bottom to top. Executes the given task against each module this
+   * module depends on and then against this module.
    */
-  public void execute(final JavaTask javaTask) throws BakeError, IOException {
-    module.execute(Java.class, new Task() {
+  public void walk(final JavaTask javaTask) throws BakeError, IOException {
+    module.walk(Java.class, new Task() {
       @Override public void execute(Module module) throws BakeError, IOException {
         javaTask.execute(module.javaHandler());
       }
@@ -148,11 +146,12 @@ public class JavaHandler implements Handler<Java> {
 
   /** Adds all external jars to the given list. */
   private void addExternalJarsTo(List<File> jars) {
-    for (ExternalArtifact externalArtifact : externalArtifacts.values()) {
-      if (externalArtifact.id.type == ExternalArtifact.Type.JAR) {
-        jars.add(externalArtifact.file);
-      }
-    }
+    throw new UnsupportedOperationException();
+//    for (ExternalArtifact externalArtifact : externalArtifacts.values()) {
+//      if (externalArtifact.id.type == ExternalArtifact.Type.JAR) {
+//        jars.add(externalArtifact.file);
+//      }
+//    }
   }
 
   /** Returns this module's first order external dependencies. */
@@ -250,12 +249,14 @@ public class JavaHandler implements Handler<Java> {
   /** Transitively compiles internal modules that this module depends on. */
   private void compileDependencies(CompilationContext context) throws BakeError,
       IOException {
-    for (String dependency : directDependencies()) {
-      if (!isExternal(dependency)) {
-        Module otherModule = repository.moduleByName(dependency);
-        otherModule.javaHandler().compileAll(context);
-      }
-    }
+    throw new UnsupportedOperationException();
+
+//    for (String dependency : directDependencies()) {
+//      if (!isExternal(dependency)) {
+//        Module otherModule = repository.moduleByName(dependency);
+//        otherModule.javaHandler().compileAll(context);
+//      }
+//    }
   }
 
   /**
