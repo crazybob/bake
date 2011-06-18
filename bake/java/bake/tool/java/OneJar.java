@@ -4,6 +4,7 @@ package bake.tool.java;
 import bake.tool.BakeError;
 import bake.tool.Files;
 import bake.tool.Log;
+import bake.tool.Module;
 import bake.tool.Profile;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
@@ -123,26 +124,26 @@ class OneJar { // TODO: Extend ExecutableJar.
     return Joiner.on(' ').join(filtered);
   }
 
-  private void addInternalDependenciesTo(Map<String, File> files)
-      throws BakeError, IOException {
-//    Set<Module> allModules = handler.allModules();
-//    for (Module module : allModules) {
-//      String baseName = "internal-" + module.name();
-//      // Skip main classes jar. We store this in main/main.jar.
-//      if (module != handler.module) {
-//        files.put("lib/" + baseName + ".jar",
-//            module.javaHandler().classesJar());
-//      }
-//      for (File jar : module.javaHandler().jars()) {
-//        files.put("lib/" + baseName + "-" + jar.getName(), jar);
-//      }
-//    }
+  private void addInternalDependenciesTo(final Map<String, File> files) throws BakeError,
+      IOException {
+    handler.walk(new JavaTask() {
+      @Override public void execute(JavaHandler handler) throws BakeError, IOException {
+        Module module = handler.module;
+        String baseName = "internal-" + module.name();
+        // Skip main classes jar. We store this in main/main.jar.
+        if (module != handler.module) {
+          files.put("lib/" + baseName + ".jar", handler.classesJar());
+        }
+        for (File jar : handler.jars()) {
+          files.put("lib/" + baseName + "-" + jar.getName(), jar);
+        }
+      }
+    });
   }
 
   /** Maps external dependencies to jars inside of our One-Jar archive. */
   private void addExternalDependenciesTo(Map<String, File> files) {
-    for (ExternalArtifact externalArtifact
-        : handler.externalArtifacts().values()) {
+    for (ExternalArtifact externalArtifact : handler.externalDependencies.main().values()) {
       ExternalArtifact.Id id = externalArtifact.id;
       if (id.type == ExternalArtifact.Type.JAR) {
         files.put("lib/" + id.organization + "-" + id.name + ".jar",

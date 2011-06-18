@@ -38,29 +38,29 @@ class FatJar extends ExecutableJar {
    * Creates an executable jar containing all of this module's dependencies.
    */
   void makeJar() throws BakeError, IOException {
-    List<File> jars = Lists.newArrayList();
+    final List<File> jars = Lists.newArrayList();
 
     // Put this module's classes and its resources first.
     jars.add(handler.classesJar());
     for (File jar : handler.jars()) jars.add(jar);
 
-    // Other internal dependencies.
-//    for (Module module : handler.allModules()) {
-//      if (module != handler.module) {
-//        jars.add(module.javaHandler().classesJar());
-//        for (File jar : module.javaHandler().jars()) {
-//          jars.add(jar);
-//        }
-//      }
-//    }
+    handler.walk(new JavaTask() {
+      @Override public void execute(JavaHandler handler) throws BakeError, IOException {
+        if (handler != FatJar.this.handler) {
+          jars.add(handler.classesJar());
+          for (File jar : handler.jars()) {
+            jars.add(jar);
+          }
+        }
+      }
+    });
 
-//    for (ExternalArtifact externalArtifact
-//        : handler.externalArtifacts().values()) {
-//      ExternalArtifact.Id id = externalArtifact.id;
-//      if (id.type == ExternalArtifact.Type.JAR) {
-//        jars.add(externalArtifact.file);
-//      }
-//    }
+    for (ExternalArtifact externalArtifact : handler.externalDependencies.main().values()) {
+      ExternalArtifact.Id id = externalArtifact.id;
+      if (id.type == ExternalArtifact.Type.JAR) {
+        jars.add(externalArtifact.file);
+      }
+    }
 
     File fatJarFile = jarFile();
 

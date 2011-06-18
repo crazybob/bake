@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -52,12 +51,6 @@ public class JavaHandler implements Handler<Java> {
   final Intellij intellij;
   final Provider<IncrementalCompiler> compilerProvider;
   final ExecutableJar executableJar = new FatJar(this);
-
-  // TODO: Remove.
-  final Map<ExternalArtifact.Id, ExternalArtifact> externalArtifacts = null;
-  public Map<ExternalArtifact.Id, ExternalArtifact> externalArtifacts() {
-    return externalArtifacts;
-  }
 
   @Inject JavaHandler(Java java, Repository repository, Module module,
       Provider<IncrementalCompiler> compilerProvider, ExternalDependencies externalDependencies,
@@ -103,11 +96,10 @@ public class JavaHandler implements Handler<Java> {
       }
     });
 
+    if (!java.mainClass().equals("")) executableJar.bake();
+
 //    // TODO: Export to other IDEs and build systems (like POM).
-//    if (!java.mainClass().equals("")) executableJar.bake();
 //    runAllTests();
-//
-//    state = State.BAKED;
   }
 
   /**
