@@ -49,8 +49,8 @@ public class JavaHandler implements Handler<Java> {
   final Repository repository;
   final Module module;
   final ExternalDependencies externalDependencies;
+  final Intellij intellij;
   final Provider<IncrementalCompiler> compilerProvider;
-
   final ExecutableJar executableJar = new FatJar(this);
 
   // TODO: Remove.
@@ -60,13 +60,17 @@ public class JavaHandler implements Handler<Java> {
   }
 
   @Inject JavaHandler(Java java, Repository repository, Module module,
-      Provider<IncrementalCompiler> compilerProvider, ExternalDependencies externalDependencies) {
+      Provider<IncrementalCompiler> compilerProvider, ExternalDependencies externalDependencies,
+      Intellij intellij) {
     this.java = java;
     this.repository = repository;
     this.module = module;
+    this.intellij = intellij;
     this.compilerProvider = compilerProvider;
     this.externalDependencies = externalDependencies;
+
     externalDependencies.setHandler(this);
+    intellij.setHandler(this);
   }
 
   public Java annotation() {
@@ -90,6 +94,8 @@ public class JavaHandler implements Handler<Java> {
         handler.externalDependencies.resolve();
       }
     });
+
+    intellij.updateAll();
 
 //    // TODO: Export to other IDEs and build systems (like POM).
 //    new Intellij(this).bake();
@@ -165,11 +171,20 @@ public class JavaHandler implements Handler<Java> {
   /** Returns this module's first order external dependencies. */
   Iterable<ExternalDependency> externalDependencies()
       throws BakeError {
+    return externalDependencies(java.dependencies());
+  }
+
+  /** Returns this module's first order external test dependencies. */
+  Iterable<ExternalDependency> externalTestDependencies()
+      throws BakeError {
+    return externalDependencies(java.testDependencies());
+  }
+
+  private Iterable<ExternalDependency> externalDependencies(String[] dependencies)
+      throws BakeError {
     List<ExternalDependency> externalDependencies = Lists.newArrayList();
-    for (String dependency : java.dependencies()) {
-      if (isExternal(dependency)) {
-        externalDependencies.add(ExternalDependency.parse(dependency));
-      }
+    for (String dependency : dependencies) {
+      if (isExternal(dependency)) externalDependencies.add(ExternalDependency.parse(dependency));
     }
     return externalDependencies;
   }
@@ -298,17 +313,6 @@ public class JavaHandler implements Handler<Java> {
   }
 
   // Jar:
-
-  /**
-   * Returns all of the modules this module transitively depends on
-   * (including this one).
-   */
-  Set<Module> allModules() throws BakeError, IOException {
-    Set<Module> allModules = Sets.newHashSet();
-    allModules.add(module);
-    addModuleDependenciesTo(allModules);
-    return allModules;
-  }
 
   /** Adds internal dependencies to the given set. */
   private void addModuleDependenciesTo(Set<Module> dependencies)

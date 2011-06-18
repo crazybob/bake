@@ -52,8 +52,8 @@ class ExternalDependencies {
 
   final Repository repository;
   final Module module;
-  JavaHandler handler;
   final Java java;
+  JavaHandler handler;
 
   @Inject ExternalDependencies(Repository repository, Module module, Java java) {
     this.repository = repository;
@@ -78,9 +78,14 @@ class ExternalDependencies {
     return ivyResults.mainArtifacts;
   }
 
-  /** Returns the transitive closure of the test dependencies. */
+  /** Returns additional dependencies used in testing. */
   public Map<ExternalArtifact.Id, ExternalArtifact> test() {
     return ivyResults.testArtifacts;
+  }
+
+  /** Returns main() + test(). */
+  public Map<ExternalArtifact.Id, ExternalArtifact> all() {
+    return ivyResults.allArtifacts;
   }
 
   /**
@@ -112,9 +117,14 @@ class ExternalDependencies {
 
     try {
       Ivy ivy = newIvy();
+
+      // TODO: Can we accomplish this w/ one retrieval instead of two?
       Map<ExternalArtifact.Id, ExternalArtifact> mainArtifacts = retrieveArtifacts(ivy, "default");
-      Map<ExternalArtifact.Id, ExternalArtifact> testArtifacts = retrieveArtifacts(ivy, "test");
-      writeIvyResults(new IvyResults(allExternalDependencies, mainArtifacts, testArtifacts));
+      Map<ExternalArtifact.Id, ExternalArtifact> allArtifacts = retrieveArtifacts(ivy, "test");
+      Map<ExternalArtifact.Id, ExternalArtifact> testArtifacts = Maps.newHashMap(allArtifacts);
+      testArtifacts.keySet().removeAll(mainArtifacts.keySet());
+      writeIvyResults(new IvyResults(allExternalDependencies, mainArtifacts, testArtifacts,
+          allArtifacts));
     } catch (ParseException e) {
       throw new AssertionError(e);
     }
@@ -302,13 +312,16 @@ class ExternalDependencies {
     final Set<String> allExternalDependencies;
     final Map<ExternalArtifact.Id, ExternalArtifact> mainArtifacts;
     final Map<ExternalArtifact.Id, ExternalArtifact> testArtifacts;
+    final Map<ExternalArtifact.Id, ExternalArtifact> allArtifacts;
 
     IvyResults(Set<String> allExternalDependencies,
         Map<ExternalArtifact.Id, ExternalArtifact> mainArtifacts,
-        Map<ExternalArtifact.Id, ExternalArtifact> testArtifacts) {
+        Map<ExternalArtifact.Id, ExternalArtifact> testArtifacts,
+        Map<ExternalArtifact.Id, ExternalArtifact> allArtifacts) {
       this.allExternalDependencies = allExternalDependencies;
       this.testArtifacts = testArtifacts;
       this.mainArtifacts = mainArtifacts;
+      this.allArtifacts = allArtifacts;
     }
   }
 
