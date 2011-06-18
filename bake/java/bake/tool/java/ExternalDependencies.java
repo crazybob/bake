@@ -245,10 +245,17 @@ class ExternalDependencies {
       out.write("<info organisation=\"internal\" module=\""
           + module.name() + "\" revision=\"working\"/>\n");
 
+      // Declare that we have a test configuration.
+      out.write("<configurations>\n");
+      out.write("<conf name=\"default\" />\n");
+      out.write("<conf name=\"test\" extends=\"default\" />\n");
+      out.write("</configurations>\n");
+
       // We don't use Ivy to manage internal artifacts. The 'publications'
       // element must be explicit, or else Ivy assumes one default artifact.
       out.write("<publications/>\n");
 
+      // Declare dependencies.
       out.write("<dependencies>\n");
       writeDependencies(out, java.dependencies(), false);
       writeDependencies(out, java.testDependencies(), true);
@@ -263,7 +270,7 @@ class ExternalDependencies {
   private void writeDependencies(OutputStreamWriter out, String[] dependencies,
       boolean test) throws BakeError,
       IOException {
-    String configuration = test ? "test" : "*";
+    String configuration = test ? "test" : "default";
     for (String dependency : dependencies) {
       if (isExternal(dependency)) {
         ExternalDependency ed = ExternalDependency.parse(dependency);
