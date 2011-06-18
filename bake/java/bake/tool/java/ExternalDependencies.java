@@ -52,14 +52,16 @@ class ExternalDependencies {
 
   final Repository repository;
   final Module module;
-  final JavaHandler handler;
+  JavaHandler handler;
   final Java java;
 
-  @Inject ExternalDependencies(Repository repository, Module module, Java java,
-      JavaHandler handler) {
+  @Inject ExternalDependencies(Repository repository, Module module, Java java) {
     this.repository = repository;
     this.module = module;
     this.java = java;
+  }
+
+  void setHandler(JavaHandler handler) {
     this.handler = handler;
   }
 

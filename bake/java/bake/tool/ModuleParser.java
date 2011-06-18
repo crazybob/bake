@@ -4,6 +4,7 @@ package bake.tool;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 import com.google.inject.Injector;
 import com.simontuffs.onejar.JarClassLoader;
@@ -67,8 +68,7 @@ class ModuleParser {
 
     // Create module. We mutate the handlers map after instantiating
     // module so the handlers can reference module.
-    Map<Class<? extends Annotation>, Handler> handlers
-        = new HashMap<Class<? extends Annotation>, Handler>();
+    Map<Class<? extends Annotation>, Handler<?>> handlers = Maps.newHashMap();
     final Module module = new Module(injector, name,
         repositoryProvider.get(), handlers, directory);
 
