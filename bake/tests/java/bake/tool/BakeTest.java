@@ -22,18 +22,20 @@ public class BakeTest extends TestCase {
   }
 
   public void testFoo() throws IOException, InterruptedException {
-    // Build foo.
-    Process p = new ProcessBuilder(
-        new File("../../out/bin/bake").getAbsolutePath(), "-v", "foo")
-        .redirectErrorStream(true)
-        .directory(new File("repo"))
-        .start();
-    ByteStreams.copy(p.getInputStream(), System.out);
-    assertEquals(0, p.waitFor());
+    // We build foo twice. Once clean and then again.
+    for (int i = 0; i < 2; i++) {
+      System.out.println("Test Build #" + i);
+      Process p = new ProcessBuilder(
+          new File("../../out/bin/bake").getAbsolutePath(), "-v", "foo")
+          .redirectErrorStream(true)
+          .directory(new File("repo"))
+          .start();
+      ByteStreams.copy(p.getInputStream(), System.out);
+      assertEquals(0, p.waitFor());
+    }
 
-    // Run foo.
     ByteArrayOutputStream bout = new ByteArrayOutputStream();
-    p = new ProcessBuilder("repo/out/bin/foo")
+    Process p = new ProcessBuilder("repo/out/bin/foo")
         .redirectErrorStream(true)
         .start();
     ByteStreams.copy(p.getInputStream(), bout);
