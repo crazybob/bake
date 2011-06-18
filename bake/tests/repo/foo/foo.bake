@@ -8,5 +8,8 @@
         "external:javax.ws.rs/jsr311-api@1.1.1",
         "external.one_jar.boot"
     },
+    testDependencies = {
+        "external:junit/junit@4.3"
+    },
     mainClass = "bake.example.foo.Foo"
 ) module foo;

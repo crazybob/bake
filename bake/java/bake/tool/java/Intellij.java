@@ -182,13 +182,9 @@ class Intellij {
 
       // Add resource directories. This will include them in the classpath
       // if you run something through IntelliJ.
-      for (String resourceDirectory : java.resources()) {
-        writeResourceDirectory(out, resourceDirectory, null);
-      }
-      for (String resourceDirectory : java.testResources()) {
-        writeResourceDirectory(out, resourceDirectory, "TEST");
-      }
-
+      writeResourceDirectories(out, java.resources(), null);
+      writeResourceDirectories(out, java.testResources(), "TEST");
+ 
       // Add internal module dependencies.
       writeModuleDependencies(out, java.dependencies(), null);
       writeModuleDependencies(out, java.testDependencies(), TEST_SCOPE);
@@ -265,7 +261,7 @@ class Intellij {
   private void writeModuleDependencies(Writer out, String[] dependencies,
       String scope) throws IOException {
     for (String dependency : dependencies) {
-      if (isExternal(dependency)) {
+      if (!isExternal(dependency)) {
         out.write("    <orderEntry type=\"module\" module-name=\"" +
             dependency.replace('.', '-') + "\"");
         if (scope != null) {
@@ -276,11 +272,13 @@ class Intellij {
     }
   }
 
-  private void writeResourceDirectory(Writer out, String resourceDirectory,
+  private void writeResourceDirectories(Writer out, String[] resourceDirectories,
       String scope) throws IOException {
-    if (new File(module.directory(), resourceDirectory).exists()) {
-      writeOrderEntry(out, module, new File(module.directory(),
-          resourceDirectory), null, false, scope);
+    for (String resourceDirectory : resourceDirectories) {
+      if (new File(module.directory(), resourceDirectory).exists()) {
+        writeOrderEntry(out, module, new File(module.directory(),
+            resourceDirectory), null, false, scope);
+      }
     }
   }
 

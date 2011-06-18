@@ -1,6 +1,0 @@
-@bake.Java(
-  dependencies = {
-      "external:junit/junit@4.+",
-      "foo.bar"
-  }
-) module foo.bar.tests;
