@@ -65,14 +65,16 @@ class IncrementalCompiler {
    * Adds a directory of Java files that should be compiled.
    */
   IncrementalCompiler appendSourceDirectory(File directory) {
-    sourceDirectories.add(directory);
+    if (directory.exists()) {
+      sourceDirectories.add(directory);
 
-    // Recursively find .java files.
-    for (File file : directory.listFiles()) {
-      if (file.getPath().endsWith(".java")) {
-        sourceFiles.add(file.getPath());
-      } else if (file.isDirectory()) {
-        appendSourceDirectory(file);
+      // Recursively find .java files.
+      for (File file : directory.listFiles()) {
+        if (file.getPath().endsWith(".java")) {
+          sourceFiles.add(file.getPath());
+        } else if (file.isDirectory()) {
+          appendSourceDirectory(file);
+        }
       }
     }
     return this;

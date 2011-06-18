@@ -68,7 +68,7 @@ class ExternalDependencies {
   /** Returns the artifact associated with the given ID. */
   ExternalArtifact get(ExternalArtifact.Id id) {
     // The test artifacts are a superset of the main artifacts.
-    return ivyResults.testArtifacts.get(id);
+    return ivyResults.allArtifacts.get(id);
   }
 
   IvyResults ivyResults;
