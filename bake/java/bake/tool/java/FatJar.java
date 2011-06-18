@@ -2,7 +2,6 @@
 package bake.tool.java;
 
 import bake.tool.BakeError;
-import bake.tool.Module;
 import bake.tool.Files;
 import bake.tool.Log;
 import com.google.common.collect.Lists;
@@ -46,22 +45,22 @@ class FatJar extends ExecutableJar {
     for (File jar : handler.jars()) jars.add(jar);
 
     // Other internal dependencies.
-    for (Module module : handler.allModules()) {
-      if (module != handler.module) {
-        jars.add(module.javaHandler().classesJar());
-        for (File jar : module.javaHandler().jars()) {
-          jars.add(jar);
-        }
-      }
-    }
+//    for (Module module : handler.allModules()) {
+//      if (module != handler.module) {
+//        jars.add(module.javaHandler().classesJar());
+//        for (File jar : module.javaHandler().jars()) {
+//          jars.add(jar);
+//        }
+//      }
+//    }
 
-    for (ExternalArtifact externalArtifact
-        : handler.externalArtifacts().values()) {
-      ExternalArtifact.Id id = externalArtifact.id;
-      if (id.type == ExternalArtifact.Type.JAR) {
-        jars.add(externalArtifact.file);
-      }
-    }
+//    for (ExternalArtifact externalArtifact
+//        : handler.externalArtifacts().values()) {
+//      ExternalArtifact.Id id = externalArtifact.id;
+//      if (id.type == ExternalArtifact.Type.JAR) {
+//        jars.add(externalArtifact.file);
+//      }
+//    }
 
     File fatJarFile = jarFile();
 

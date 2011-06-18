@@ -123,8 +123,9 @@ class ExternalDependencies {
       Map<ExternalArtifact.Id, ExternalArtifact> allArtifacts = retrieveArtifacts(ivy, "test");
       Map<ExternalArtifact.Id, ExternalArtifact> testArtifacts = Maps.newHashMap(allArtifacts);
       testArtifacts.keySet().removeAll(mainArtifacts.keySet());
-      writeIvyResults(new IvyResults(allExternalDependencies, mainArtifacts, testArtifacts,
-          allArtifacts));
+      this.ivyResults = new IvyResults(allExternalDependencies, mainArtifacts, testArtifacts,
+          allArtifacts);
+      writeIvyResults(this.ivyResults);
     } catch (ParseException e) {
       throw new AssertionError(e);
     }

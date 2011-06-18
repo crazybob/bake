@@ -48,6 +48,7 @@ import static bake.tool.java.ExternalDependency.isExternal;
  * @author Bob Lee (bob@squareup.com)
  */
 class Intellij {
+  
   private static final String MODULE = "module";
   private static final String TEST_SCOPE = "TEST";
   private static final String RUNTIME_SCOPE = "RUNTIME";

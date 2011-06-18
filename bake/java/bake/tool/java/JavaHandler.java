@@ -149,11 +149,13 @@ public class JavaHandler implements Handler<Java> {
 
   /** Gathers jar files needed to run this module. */
   private List<File> allJars() throws BakeError, IOException {
-    List<File> jarFiles = Lists.newArrayList();
-    for (Module module : allModules()) {
-      jarFiles.add(module.javaHandler().classesJar());
-      jarFiles.addAll(module.javaHandler().jars());
-    }
+    final List<File> jarFiles = Lists.newArrayList();
+    walk(new JavaTask() {
+      @Override public void execute(JavaHandler handler) throws BakeError, IOException {
+        jarFiles.add(handler.classesJar());
+        jarFiles.addAll(handler.jars());
+      }
+    });
     addExternalJarsTo(jarFiles);
     return jarFiles;
   }
@@ -438,10 +440,10 @@ public class JavaHandler implements Handler<Java> {
   /** Runs all tests, including transitive depdnencies. */
   private void runAllTests() throws BakeError, IOException {
     Log.i("Running all tests...");
-    for (Module otherModule : allModules()) {
-      // TODO: Run least dependent packges first.
-      otherModule.javaHandler().findAndRunTests();
-    }
+//    for (Module otherModule : allModules()) {
+//      // TODO: Run least dependent packges first.
+//      otherModule.javaHandler().findAndRunTests();
+//    }
   }
 
   boolean ranTests;
