@@ -40,5 +40,12 @@ public class BakeTest extends TestCase {
         .start();
     ByteStreams.copy(p.getInputStream(), bout);
     assertEquals("OK", new String(bout.toByteArray()));
+
+    bout = new ByteArrayOutputStream();
+    p = new ProcessBuilder("repo/out/bin/foo.bar")
+        .redirectErrorStream(true)
+        .start();
+    ByteStreams.copy(p.getInputStream(), bout);
+    assertEquals("OK", new String(bout.toByteArray()));
   }
 }
