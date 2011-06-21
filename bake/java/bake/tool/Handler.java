@@ -3,7 +3,6 @@ package bake.tool;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
-import java.util.Collection;
 
 /**
  * Handles a {@link BakeAnnotation Bake annotation}.
@@ -17,7 +16,4 @@ public interface Handler<A extends Annotation> {
 
   /** Bakes the associated module. */
   void bake() throws IOException, BakeError;
-
-  /** This handler's direct dependencies. */
-  Collection<Module> directDependencies() throws BakeError, IOException;
 }

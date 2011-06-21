@@ -8,11 +8,11 @@ import bake.tool.Handler;
 import bake.tool.Log;
 import bake.tool.Module;
 import bake.tool.Repository;
-import bake.tool.Task;
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.io.ByteStreams;
 
@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -41,8 +42,6 @@ import static bake.tool.java.ExternalDependency.isExternal;
  * @author Bob Lee (bob@squareup.com)
  */
 public class JavaHandler implements Handler<Java> {
-
-  private static final String TEST_MODULE_NAME = "tests";
 
   final Java java;
   final Repository repository;
@@ -86,7 +85,7 @@ public class JavaHandler implements Handler<Java> {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         handler.externalDependencies.resolve();
       }
-    });
+    }, true);
 
     intellij.updateAll();
 
@@ -94,7 +93,7 @@ public class JavaHandler implements Handler<Java> {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         handler.compile();
       }
-    });
+    }, true);
 
     if (!java.mainClass().equals("")) executableJar.bake();
 
@@ -102,25 +101,56 @@ public class JavaHandler implements Handler<Java> {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         handler.runTests();
       }
-    });
+    }, true);
   }
 
   /**
    * Walks the module tree from bottom to top. Executes the given task against each module this
    * module depends on and then against this module.
    */
-  public void walk(final JavaTask javaTask) throws BakeError, IOException {
-    module.walk(Java.class, new Task() {
-      @Override public void execute(Module module) throws BakeError, IOException {
-        javaTask.execute(module.javaHandler());
-      }
-    });
+  public void walk(JavaTask task, boolean includeTests) throws BakeError, IOException {
+    walk(Maps.<JavaHandler, TaskState>newHashMap(), task, includeTests);
+  }
+
+  /** State of a task for a given module. */
+  private enum TaskState { RUNNING, DONE }
+
+  /**
+   * Walks the module tree from bottom to top. Executes the given task against each module this
+   * module depends on and then against this module. Uses states to detect circular dependencies
+   * and avoid duplication.
+   */
+  private void walk(Map<JavaHandler, TaskState> states, JavaTask task,
+      boolean includeTests) throws BakeError,
+      IOException {
+    TaskState taskState = states.get(this);
+    if (taskState == TaskState.DONE) {
+      Log.v("Already executed %s for %s.", task, module.name());
+      return;
+    }
+    if (taskState == TaskState.RUNNING) {
+      // TODO: Output path.
+      throw new BakeError("Circular dependency in " + module.name() + ".");
+    }
+    states.put(this, TaskState.RUNNING);
+
+    // Execute against dependencies first.
+    for (Module dependency : directDependencies(includeTests)) {
+      dependency.javaHandler().walk(states, task, includeTests);
+    }
+
+    // Execute against this module.
+    task.execute(this);
+
+    states.put(this, TaskState.DONE);
   }
 
   /** Returns the set of direct dependencies for this module. */
-  public Collection<Module> directDependencies() throws BakeError, IOException {
+  public Collection<Module> directDependencies(boolean includeTests) throws BakeError, IOException {
     List<Module> directDependencies = Lists.newArrayList();
-    for (String dependency : meld(java.dependencies(), java.testDependencies())) {
+    Set<String> dependencies = includeTests ? meld(java.dependencies(), java.testDependencies())
+        : Sets.newHashSet(java.dependencies());
+    for (String dependency : dependencies) {
       if (!isExternal(dependency)) directDependencies.add(repository.moduleByName(dependency));
     }
     return directDependencies;
@@ -146,7 +176,7 @@ public class JavaHandler implements Handler<Java> {
         ClassLoader.getSystemClassLoader());
   }
 
-  /** Gathers jar files needed to run this module. */
+  /** Gathers jar files needed to run this module. Includes tests. */
   private List<File> allJars() throws BakeError, IOException {
     final List<File> jarFiles = Lists.newArrayList();
     walk(new JavaTask() {
@@ -154,7 +184,7 @@ public class JavaHandler implements Handler<Java> {
         jarFiles.add(handler.classesJar());
         jarFiles.addAll(handler.jars());
       }
-    });
+    }, true);
     addExternalJarsTo(jarFiles);
     return jarFiles;
   }

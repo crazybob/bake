@@ -3,13 +3,12 @@ package bake.tool.android;
 
 import bake.Android;
 import bake.tool.BakeError;
-import bake.tool.Module;
 import bake.tool.Handler;
+import bake.tool.Module;
 import bake.tool.java.JavaHandler;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.Collection;
 
 /**
  * Handles Android app modules.
@@ -28,10 +27,6 @@ public class AndroidHandler implements Handler<Android> {
 
   public Android annotation() {
     return android;
-  }
-
-  @Override public Collection<Module> directDependencies() throws BakeError, IOException {
-    return javaHandler.directDependencies();
   }
 
   public void bake() throws IOException, BakeError {

@@ -113,7 +113,7 @@ class ExternalDependencies {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         handler.externalDependencies.writeIvyXml();
       }
-    });
+    }, true);
 
     try {
       Ivy ivy = newIvy();
@@ -232,7 +232,7 @@ class ExternalDependencies {
       private void addExternalDependencies(String[] dependencies) {
         for (String dependency : dependencies) if (isExternal(dependency)) all.add(dependency);
       }
-    });
+    }, true);
     return all;
   }
 

@@ -93,7 +93,7 @@ class Intellij {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         handler.intellij.writeModuleXml();
       }
-    });
+    }, true);
 
     // Add module files to ./idea/modules.xml.
     updateModulesXml();
@@ -346,7 +346,7 @@ class Intellij {
           modulePaths.add("$PROJECT_DIR$/"
               + repository.relativePath(moduleXmlFor(handler.module)));
         }
-      });
+      }, true);
     }
 
     @Override

@@ -138,7 +138,7 @@ class OneJar { // TODO: Extend ExecutableJar.
           files.put("lib/" + baseName + "-" + jar.getName(), jar);
         }
       }
-    });
+    }, false);
   }
 
   /** Maps external dependencies to jars inside of our One-Jar archive. */

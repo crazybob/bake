@@ -14,7 +14,7 @@ public class Bar {
     testTeeIsntVisible();
     testGuiceIsVisible();
 
-    System.out.println("OK"); // Read by BakeTest.
+    System.out.print("OK"); // Read by BakeTest.
   }
 
   private static void testGuiceIsVisible() throws ClassNotFoundException {

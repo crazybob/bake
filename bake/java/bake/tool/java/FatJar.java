@@ -53,7 +53,7 @@ class FatJar extends ExecutableJar {
           }
         }
       }
-    });
+    }, false);
 
     for (ExternalArtifact externalArtifact : handler.externalDependencies.main().values()) {
       ExternalArtifact.Id id = externalArtifact.id;

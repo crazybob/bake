@@ -5,7 +5,11 @@ import bake.tool.BakeError;
 
 import java.io.IOException;
 
-/** A task that can be executed against a Java handler. */
+/**
+ * A task that can be executed against a Java handler.
+ *
+ * @author Bob Lee (bob@squareup.com)
+ */
 public interface JavaTask {
 
   /** Executes this task against the given handler. */

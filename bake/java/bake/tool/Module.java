@@ -136,46 +136,4 @@ public class Module {
 
     return handlerInjector.getInstance(handlerType);
   }
-
-  /** State of a task for a given module. */
-  private enum TaskState { RUNNING, DONE }
-
-  /**
-   * Walks the module tree from bottom to top. Executes the given task against each module this
-   * module depends on and then against this module. Uses dependencies from handler of the
-   * specified type.
-   */
-  public void walk(Class<? extends Annotation> handlerType, Task task) throws BakeError,
-      IOException {
-    walk(Maps.<Module, TaskState>newHashMap(), handlerType, task);
-  }
-
-  /**
-   * Walks the module tree from bottom to top. Executes the given task against each module this
-   * module depends on and then against this module. Uses states to detect circular dependencies
-   * and avoid duplication.
-   */
-  private void walk(Map<Module, TaskState> states, Class<? extends Annotation> handlerType,
-      Task task) throws BakeError, IOException {
-    TaskState taskState = states.get(this);
-    if (taskState == TaskState.DONE) {
-      Log.v("Already executed %s for %s.", task, name);
-      return;
-    }
-    if (taskState == TaskState.RUNNING) {
-      // TODO: Output path.
-      throw new BakeError("Circular dependency in " + name + ".");
-    }
-    states.put(this, TaskState.RUNNING);
-
-    // Execute against dependencies first.
-    for (Module dependency : handlers.get(handlerType).directDependencies()) {
-      dependency.walk(states, handlerType, task);
-    }
-
-    // Execute against this module.
-    task.execute(this);
-
-    states.put(this, TaskState.DONE);
-  }
 }
