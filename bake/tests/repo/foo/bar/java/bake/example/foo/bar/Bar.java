@@ -2,6 +2,8 @@
 package bake.example.foo.bar;
 
 import com.google.inject.Guice;
+import java.io.File;
+import java.io.IOException;
 
 public class Bar {
 
@@ -9,12 +11,20 @@ public class Bar {
     return s.toLowerCase();
   }
 
-  public static void main(String[] args) throws ClassNotFoundException {
+  public static void main(String[] args) throws Exception {
     testJunitIsntVisible();
     testTeeIsntVisible();
     testGuiceIsVisible();
+    testWorkingDirectory();
 
     System.out.print("OK"); // Read by BakeTest.
+  }
+
+  private static void testWorkingDirectory() throws IOException {
+    File workingDirectory = new File(".").getCanonicalFile();
+    if (!workingDirectory.getPath().endsWith("bake/tests")) {
+      throw new AssertionError("Unexpected working directory: " + workingDirectory);
+    }
   }
 
   private static void testGuiceIsVisible() throws ClassNotFoundException {

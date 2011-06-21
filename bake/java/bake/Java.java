@@ -98,6 +98,11 @@ public @interface Java {
   String testRunner() default "";
 
   /**
+   * Working directory to use when running tests.
+   */
+  String testWorkingDirectory() default "tests";
+
+  /**
    * Matches test source files that Bake should run. Matches against a path relative to the
    * module root.
    */

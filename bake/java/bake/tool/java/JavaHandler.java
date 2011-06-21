@@ -450,9 +450,10 @@ public class JavaHandler implements Handler<Java> {
 
     Log.v(command.toString());
 
+    File workingDirectory = new File(module.directory(), java.testWorkingDirectory());
     Process process = new ProcessBuilder(command)
         .redirectErrorStream(true)
-        .directory(module.directory()) // Run from tests directory.
+        .directory(workingDirectory) // Run from tests directory.
         .start();
 
     ByteStreams.copy(process.getInputStream(), System.out);
