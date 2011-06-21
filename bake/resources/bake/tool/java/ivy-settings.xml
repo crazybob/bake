@@ -22,6 +22,8 @@
           root="http://guiceyfruit.googlecode.com/svn/repo/releases/"/>
       <ibiblio name="codahale" m2compatible="true"
           root="http://repo.codahale.com" />
+      <ibiblio name="oracle" m2compatible="true"
+          root="http://download.oracle.com/maven" />
     </chain>
 
     <!--
