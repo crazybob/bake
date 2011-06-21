@@ -178,6 +178,7 @@ public class JavaHandler implements Handler<Java> {
 
   /** Gathers jar files needed to run this module. Includes tests. */
   private List<File> allJars() throws BakeError, IOException {
+    // TODO: Exclude jar files from our dependencies' tests.
     final List<File> jarFiles = Lists.newArrayList();
     walk(new JavaTask() {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
