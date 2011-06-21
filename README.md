@@ -212,4 +212,19 @@ them automatically.
 
 The new bake executable is in `out/bin/bake`.
 
+### Testing Bake itself
+
+When you bake Bake, Bake's tests build and test a test repository.
+
+Open the test repo (`bake/tests/repo`) in IntelliJ and make sure everything compiles. Run `Foo`,
+`Bar`, and their tests in IntelliJ.
+
+Finally, use Bake to build and test itself again:
+
+    $ out/bin/bake bake
+
+And then release:
+
+    $ cp out/bin/bake bin
+
 [1]: http://java.sun.com/docs/books/jls/third_edition/html/packages.html#7.4.1.1

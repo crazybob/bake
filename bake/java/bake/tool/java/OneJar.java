@@ -1,8 +1,11 @@
 // Copyright 2011 Square, Inc.
 package bake.tool.java;
 
-import bake.tool.*;
+import bake.tool.BakeError;
+import bake.tool.Files;
+import bake.tool.Log;
 import bake.tool.Module;
+import bake.tool.Profile;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -16,7 +19,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.jar.Attributes;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
@@ -70,7 +72,7 @@ class OneJar { // TODO: Extend ExecutableJar.
       }
 
       // The last time the dependency list was modified.
-      lastModified = Math.max(lastModified, handler.external.lastModified());
+      lastModified = Math.max(lastModified, handler.externalDependencies.lastModified());
 
       if (lastModified <= oneJarFile.lastModified()) {
         Log.i("%s is up to date.", handler.repository.relativePath(oneJarFile));
@@ -122,26 +124,26 @@ class OneJar { // TODO: Extend ExecutableJar.
     return Joiner.on(' ').join(filtered);
   }
 
-  private void addInternalDependenciesTo(Map<String, File> files)
-      throws BakeError, IOException {
-    Set<Module> allModules = handler.allModules();
-    for (Module module : allModules) {
-      String baseName = "internal-" + module.name();
-      // Skip main classes jar. We store this in main/main.jar.
-      if (module != handler.module) {
-        files.put("lib/" + baseName + ".jar",
-            module.javaHandler().classesJar());
+  private void addInternalDependenciesTo(final Map<String, File> files) throws BakeError,
+      IOException {
+    handler.walk(new JavaTask() {
+      @Override public void execute(JavaHandler handler) throws BakeError, IOException {
+        Module module = handler.module;
+        String baseName = "internal-" + module.name();
+        // Skip main classes jar. We store this in main/main.jar.
+        if (module != handler.module) {
+          files.put("lib/" + baseName + ".jar", handler.classesJar());
+        }
+        for (File jar : handler.jars()) {
+          files.put("lib/" + baseName + "-" + jar.getName(), jar);
+        }
       }
-      for (File jar : module.javaHandler().jars()) {
-        files.put("lib/" + baseName + "-" + jar.getName(), jar);
-      }
-    }
+    }, false);
   }
 
   /** Maps external dependencies to jars inside of our One-Jar archive. */
   private void addExternalDependenciesTo(Map<String, File> files) {
-    for (ExternalArtifact externalArtifact
-        : handler.externalArtifacts().values()) {
+    for (ExternalArtifact externalArtifact : handler.externalDependencies.main().values()) {
       ExternalArtifact.Id id = externalArtifact.id;
       if (id.type == ExternalArtifact.Type.JAR) {
         files.put("lib/" + id.organization + "-" + id.name + ".jar",

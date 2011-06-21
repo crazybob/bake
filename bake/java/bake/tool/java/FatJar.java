@@ -2,7 +2,6 @@
 package bake.tool.java;
 
 import bake.tool.BakeError;
-import bake.tool.Module;
 import bake.tool.Files;
 import bake.tool.Log;
 import com.google.common.collect.Lists;
@@ -39,24 +38,24 @@ class FatJar extends ExecutableJar {
    * Creates an executable jar containing all of this module's dependencies.
    */
   void makeJar() throws BakeError, IOException {
-    List<File> jars = Lists.newArrayList();
+    final List<File> jars = Lists.newArrayList();
 
     // Put this module's classes and its resources first.
     jars.add(handler.classesJar());
     for (File jar : handler.jars()) jars.add(jar);
 
-    // Other internal dependencies.
-    for (Module module : handler.allModules()) {
-      if (module != handler.module) {
-        jars.add(module.javaHandler().classesJar());
-        for (File jar : module.javaHandler().jars()) {
-          jars.add(jar);
+    handler.walk(new JavaTask() {
+      @Override public void execute(JavaHandler handler) throws BakeError, IOException {
+        if (handler != FatJar.this.handler) {
+          jars.add(handler.classesJar());
+          for (File jar : handler.jars()) {
+            jars.add(jar);
+          }
         }
       }
-    }
+    }, false);
 
-    for (ExternalArtifact externalArtifact
-        : handler.externalArtifacts().values()) {
+    for (ExternalArtifact externalArtifact : handler.externalDependencies.main().values()) {
       ExternalArtifact.Id id = externalArtifact.id;
       if (id.type == ExternalArtifact.Type.JAR) {
         jars.add(externalArtifact.file);
@@ -73,7 +72,7 @@ class FatJar extends ExecutableJar {
       }
 
       // The last time the dependency list was modified.
-      lastModified = Math.max(lastModified, handler.external.lastModified());
+      lastModified = Math.max(lastModified, handler.externalDependencies.lastModified());
 
       if (lastModified <= fatJarFile.lastModified()) {
         Log.i("%s is up to date.", handler.repository.relativePath(fatJarFile));

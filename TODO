@@ -18,3 +18,5 @@
   - Hash differences from master. Write hash after tests pass.
 - Download source code for transitive deps
   (https://issues.apache.org/jira/browse/IVY-1003)
+- Test `bake all`. Don't traverse down into nested Bake repos.
+- Support "exporting" transitive deps.

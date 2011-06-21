@@ -61,15 +61,15 @@ public class Main {
 
         initializeJavaModule(repo, args.get(1));
       } else if (args.get(0).equals("all")) {
-        buildAll(repo);
+        repo.bakeAll();
       } else {
-        build(repo, args);
+        repo.bakePaths(args);
       }
     } catch (Exception e) {
       @SuppressWarnings("ThrowableResultOfMethodCallIgnored")
       BakeError bakeError = BakeError.unwrap(e);
       if (bakeError != null) {
-        Log.e(bakeError.getMessage());
+        Log.e("Error: " + bakeError.getMessage());
         exit(1);
       } else {
         throw e;
@@ -81,15 +81,6 @@ public class Main {
   static void exit(int code) {
     Log.i("Done in %dms.", (System.nanoTime() - start) / 1000000);
     System.exit(code);
-  }
-
-  private static void build(Repository repo, Iterable<String> paths)
-      throws BakeError, IOException {
-    repo.bakePaths(paths);
-  }
-
-  private static void buildAll(Repository repo) throws BakeError, IOException {
-    repo.bakeAll();
   }
 
   private static void initializeJavaModule(Repository repo,

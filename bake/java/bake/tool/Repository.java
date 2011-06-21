@@ -183,7 +183,11 @@ import java.util.regex.Pattern;
   private void findBakeFiles(File directory, Set<File> bakeFiles) {
     for (File file : directory.listFiles()) {
       if (file.isDirectory()) {
-        findBakeFiles(file, bakeFiles);
+        if (!new File(file, DOT_BAKE).exists()) {
+          findBakeFiles(file, bakeFiles);
+        } else {
+          Log.v("Skipping nested Bake repo: %s", file);
+        }
       } else {
         String name = file.getName();
         if (!name.equals(DOT_BAKE) && name.endsWith(DOT_BAKE)) {
