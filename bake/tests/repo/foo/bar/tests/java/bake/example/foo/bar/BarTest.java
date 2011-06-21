@@ -19,8 +19,24 @@ public class BarTest extends TestCase {
 
   public void testWorkingDirectory() throws IOException {
     File workingDirectory = new File(".").getCanonicalFile();
-    if (!workingDirectory.getPath().endsWith("bar/tests")) {
+    if (!workingDirectory.getPath().endsWith("/bar")) {
       throw new AssertionError("Unexpected working directory: " + workingDirectory);
     }
+  }
+
+  public void testExternalTransitiveTestDependencyIsntVisible() {
+    try {
+      // log4j is included by foo's tests and shouldn't be visible here.
+      Class.forName("org.apache.log4j.Logger");
+      fail();
+    } catch (ClassNotFoundException e) { /* expected */ }
+  }
+
+  public void testInternalTransitiveTestDependencyIsntVisible() {
+    try {
+      // Included by foo's tests and shouldn't be visible here.
+      Class.forName("bake.example.foo.test_support.NotInBar");
+      fail();
+    } catch (ClassNotFoundException e) { /* expected */ }
   }
 }

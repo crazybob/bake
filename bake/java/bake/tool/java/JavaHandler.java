@@ -9,7 +9,6 @@ import bake.tool.Log;
 import bake.tool.Module;
 import bake.tool.Repository;
 import com.google.common.base.Charsets;
-import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -22,9 +21,6 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -156,28 +152,8 @@ public class JavaHandler implements Handler<Java> {
     return directDependencies;
   }
 
-  /**
-   * Creates a class loader containing the classes from this module and
-   * all of its dependencies.
-   */
-  private ClassLoader classLoader() throws BakeError, IOException {
-    List<URL> jarUrls = Lists.transform(allJars(), new Function<File, URL>() {
-      public URL apply(File input) {
-        try {
-          return input.toURI().toURL();
-        } catch (MalformedURLException e) {
-          throw new AssertionError(e);
-        }
-      }
-    });
-
-    // The system class loader contains no Bake classes when run via One-Jar.
-    return new URLClassLoader(jarUrls.toArray(new URL[jarUrls.size()]),
-        ClassLoader.getSystemClassLoader());
-  }
-
   /** Gathers jar files needed to run this module. Includes tests. */
-  private List<File> allJars() throws BakeError, IOException {
+  private List<File> allJarsForTests() throws BakeError, IOException {
     // TODO: Exclude jar files from our dependencies' tests.
     final List<File> jarFiles = Lists.newArrayList();
     walk(new JavaTask() {
@@ -292,20 +268,6 @@ public class JavaHandler implements Handler<Java> {
   }
 
   // Jar:
-
-  /** Adds internal dependencies to the given set. */
-  private void addModuleDependenciesTo(Set<Module> dependencies)
-      throws BakeError, IOException {
-    // TODO: Order these breadth first.
-    for (String dependencyId : java.dependencies()) {
-      if (!isExternal(dependencyId)) {
-        Module otherModule = repository.moduleByName(dependencyId);
-        if (dependencies.add(otherModule)) {
-          otherModule.javaHandler().addModuleDependenciesTo(dependencies);
-        }
-      }
-    }
-  }
 
   /**
    * Creates a classes.jar containing the classes and resources from this
@@ -434,7 +396,7 @@ public class JavaHandler implements Handler<Java> {
      * the copy in the test classloader. We'd have to use reflection to access
      * JUnit in the test classloader.
      */
-    List<File> files = allJars();
+    List<File> files = allJarsForTests();
     files.add(testClassesDirectory());
     for (String resourceDirectory : java.testResources()) {
       files.add(new File(module.directory(), resourceDirectory));
@@ -510,30 +472,21 @@ public class JavaHandler implements Handler<Java> {
         moduleName.replace('.', File.separatorChar));
     Files.mkdirs(new File(moduleRoot, java.source()[0]));
     Files.mkdirs(new File(moduleRoot, java.resources()[0]));
+    File testsRoot = new File(repository.root(), moduleName.replace(
+        '.', File.separatorChar) + File.separatorChar + "tests");
+    Files.mkdirs(new File(testsRoot, java.source()[0]));
+    Files.mkdirs(new File(testsRoot, java.resources()[0]));
     String unqualifiedName = moduleName.substring(
         moduleName.lastIndexOf('.') + 1);
     File bakeFile = new File(moduleRoot,
         unqualifiedName + Repository.DOT_BAKE);
     if (!bakeFile.exists()) {
-      com.google.common.io.Files.write(
-          "@bake.Java module " + moduleName + ";\n",
-          bakeFile, Charsets.UTF_8);
-    }
-
-    // Create tests module.
-    File testsRoot = new File(repository.root(), moduleName.replace(
-        '.', File.separatorChar) + File.separatorChar + "tests");
-    Files.mkdirs(new File(testsRoot, java.source()[0]));
-    Files.mkdirs(new File(testsRoot, java.resources()[0]));
-    File testBakeFile = new File(testsRoot, "tests" + Repository.DOT_BAKE);
-    if (!testBakeFile.exists()) {
       com.google.common.io.Files.write("@bake.Java(\n"
-          + "  dependencies = {\n"
-          + "      \"external:junit/junit@4.+\",\n"
-          + "      \"" + moduleName + "\"\n"
+          + "  testDependencies = {\n"
+          + "      \"external:junit/junit@4.3\"\n"
           + "  }\n"
-          + ") module " + moduleName + ".tests;\n",
-          testBakeFile, Charsets.UTF_8);
+          + ") module " + moduleName + ";\n",
+          bakeFile, Charsets.UTF_8);
     }
 
     Log.i("Created " + repository.relativePath(moduleRoot) + ".");

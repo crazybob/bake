@@ -185,8 +185,10 @@ class ExternalDependencies {
             + "." + artifact.getExt();
         File file = new File(ivyDirectory, path);
 
-        ExternalArtifact.Type type = ExternalArtifact.Type.fromIvyName(
-            artifact.getType());
+        String typeName = artifact.getType();
+        // Some dependencies use "bundle" instead of "jar".
+        if (typeName.equalsIgnoreCase("bundle")) typeName = "jar";
+        ExternalArtifact.Type type = ExternalArtifact.Type.fromIvyName(typeName);
         ExternalArtifact.Id artifactId = new ExternalArtifact.Id(
             revisionId.getOrganisation(), revisionId.getName(), type);
         if (artifacts.put(artifactId, new ExternalArtifact(artifactId, file))

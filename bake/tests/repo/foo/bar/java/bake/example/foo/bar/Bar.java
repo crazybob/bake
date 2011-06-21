@@ -22,7 +22,7 @@ public class Bar {
 
   private static void testWorkingDirectory() throws IOException {
     File workingDirectory = new File(".").getCanonicalFile();
-    if (!workingDirectory.getPath().endsWith("bake/tests")) {
+    if (!workingDirectory.getPath().endsWith("/bake")) {
       throw new AssertionError("Unexpected working directory: " + workingDirectory);
     }
   }

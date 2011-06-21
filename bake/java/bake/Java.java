@@ -100,11 +100,12 @@ public @interface Java {
   /**
    * Working directory to use when running tests.
    */
-  String testWorkingDirectory() default "tests";
+  String testWorkingDirectory() default "";
 
-  /**
-   * Matches test source files that Bake should run. Matches against a path relative to the
-   * module root.
-   */
-  String[] testIncludes() default { ".*Test\\.java" };
+// TODO: Support this:
+//  /**
+//   * Matches test source files that Bake should run. Matches against a path relative to the
+//   * module root.
+//   */
+//  String[] testIncludes() default { ".*Test\\.java" };
 }
