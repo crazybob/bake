@@ -12,11 +12,8 @@ public class FooTest extends TestCase {
     assertEquals("tee", tee.Tee.value);
   }
 
-  public void testTransitiveDependencyIsVisible() {
-    try {
-      // -> foo.bar -> Guice -> javax.inject
-      Class.forName("javax.inject.Inject");
-      throw new AssertionError();
-    } catch (ClassNotFoundException e) { /* expected */ }
+  public void testTransitiveDependencyIsVisible() throws ClassNotFoundException {
+    // foo -> foo.bar -> Guice -> javax.inject
+    Class.forName("javax.inject.Inject");
   }
 }

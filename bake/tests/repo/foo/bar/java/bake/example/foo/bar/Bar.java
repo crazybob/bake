@@ -9,7 +9,7 @@ public class Bar {
     return s.toLowerCase();
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws ClassNotFoundException {
     testJunitIsntVisible();
     testTeeIsntVisible();
     testGuiceIsVisible();
@@ -17,8 +17,8 @@ public class Bar {
     System.out.println("OK"); // Read by BakeTest.
   }
 
-  private static void testGuiceIsVisible() {
-    Guice.creatInjector();
+  private static void testGuiceIsVisible() throws ClassNotFoundException {
+    Guice.createInjector();
     Class.forName("javax.inject.Inject"); // Transitive.
   }
 

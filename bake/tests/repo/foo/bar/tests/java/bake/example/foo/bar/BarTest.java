@@ -6,12 +6,12 @@ import junit.framework.TestCase;
 
 public class BarTest extends TestCase {
 
-  private static void testTeeIsVisible() throws Exception {
+  public void testTeeIsVisible() throws Exception {
     Class.forName(tee.Tee.class.getName());
   }
 
-  public void testGuiceIsVisible() {
-    Guice.creatInjector();
+  public void testGuiceIsVisible() throws ClassNotFoundException {
+    Guice.createInjector();
     Class.forName("javax.inject.Inject"); // Transitive.
   }
 }
