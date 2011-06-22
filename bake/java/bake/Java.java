@@ -38,16 +38,6 @@ public @interface Java {
    */
   String[] exports() default {};
 
-  /*
-    TODO:
-      - Done: External dependencies
-      - Done: IntelliJ config
-      - Done: Compilation
-      - Done: Executable jar
-      - Done? Tests
-      - Done: walk()
-   */
-
   /**
    * Identifies the main class. If set, Bake will be an executable jar
    * containing all of this module's dependencies.
