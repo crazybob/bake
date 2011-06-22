@@ -31,6 +31,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static bake.tool.java.ExternalDependency.isExternal;
+import static bake.tool.java.WalkStrategy.ALL_TESTS;
+import static bake.tool.java.WalkStrategy.CURRENT_TESTS;
+import static bake.tool.java.WalkStrategy.NO_TESTS;
 
 /**
  * Bakes Java libraries.
@@ -81,7 +84,7 @@ public class JavaHandler implements Handler<Java> {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         handler.externalDependencies.resolve();
       }
-    }, true);
+    }, ALL_TESTS);
 
     intellij.updateAll();
 
@@ -89,7 +92,7 @@ public class JavaHandler implements Handler<Java> {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         handler.compile();
       }
-    }, true);
+    }, ALL_TESTS);
 
     if (!java.mainClass().equals("")) executableJar.bake();
 
@@ -97,15 +100,15 @@ public class JavaHandler implements Handler<Java> {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         handler.runTests();
       }
-    }, true);
+    }, ALL_TESTS);
   }
 
   /**
    * Walks the module tree from bottom to top. Executes the given task against each module this
    * module depends on and then against this module.
    */
-  public void walk(JavaTask task, boolean includeTests) throws BakeError, IOException {
-    walk(Maps.<JavaHandler, TaskState>newHashMap(), task, includeTests);
+  public void walk(JavaTask task, WalkStrategy strategy) throws BakeError, IOException {
+    walk(Maps.<JavaHandler, TaskState>newHashMap(), task, strategy);
   }
 
   /** State of a task for a given module. */
@@ -117,8 +120,7 @@ public class JavaHandler implements Handler<Java> {
    * and avoid duplication.
    */
   private void walk(Map<JavaHandler, TaskState> states, JavaTask task,
-      boolean includeTests) throws BakeError,
-      IOException {
+      WalkStrategy strategy) throws BakeError, IOException {
     TaskState taskState = states.get(this);
     if (taskState == TaskState.DONE) {
       Log.v("Already executed %s for %s.", task, module.name());
@@ -131,8 +133,8 @@ public class JavaHandler implements Handler<Java> {
     states.put(this, TaskState.RUNNING);
 
     // Execute against dependencies first.
-    for (Module dependency : directDependencies(includeTests)) {
-      dependency.javaHandler().walk(states, task, includeTests);
+    for (Module dependency : directDependencies(strategy != NO_TESTS)) {
+      dependency.javaHandler().walk(states, task, strategy == ALL_TESTS ? ALL_TESTS : NO_TESTS);
     }
 
     // Execute against this module.
@@ -161,7 +163,7 @@ public class JavaHandler implements Handler<Java> {
         jarFiles.add(handler.classesJar());
         jarFiles.addAll(handler.jars());
       }
-    }, true);
+    }, CURRENT_TESTS);
     addExternalJarsTo(jarFiles);
     return jarFiles;
   }
@@ -483,7 +485,7 @@ public class JavaHandler implements Handler<Java> {
     if (!bakeFile.exists()) {
       com.google.common.io.Files.write("@bake.Java(\n"
           + "  testDependencies = {\n"
-          + "      \"external:junit/junit@4.3\"\n"
+          + "      \"external:junit/junit@4.8.2\"\n"
           + "  }\n"
           + ") module " + moduleName + ";\n",
           bakeFile, Charsets.UTF_8);

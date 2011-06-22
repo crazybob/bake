@@ -1,6 +1,7 @@
 // Copyright 2011 Square, Inc.
 package bake.example.foo.bar;
 
+import bake.example.foo.test_support.NotInFoo;
 import com.google.inject.Guice;
 import java.io.File;
 import java.io.IOException;
@@ -32,11 +33,7 @@ public class BarTest extends TestCase {
     } catch (ClassNotFoundException e) { /* expected */ }
   }
 
-  public void testInternalTransitiveTestDependencyIsntVisible() {
-    try {
-      // Included by foo's tests and shouldn't be visible here.
-      Class.forName("bake.example.foo.test_support.NotInBar");
-      fail();
-    } catch (ClassNotFoundException e) { /* expected */ }
+  public void testInternalTestDependencyIsVisible() throws ClassNotFoundException {
+    Class.forName(NotInFoo.class.getName());
   }
 }

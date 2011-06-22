@@ -13,10 +13,7 @@
         "external:junit/junit@4.3",
 
         // Log4j uses "bundle" instead of "jar" for its artifact type.
-        "external:log4j/log4j@1.2.16",
-
-        // foo.bar's tests should not see classes from foo.test_support.
-        "foo.test_support"
+        "external:log4j/log4j@1.2.16"
     },
     mainClass = "bake.example.foo.Foo"
 ) module foo;
