@@ -10,5 +10,12 @@
         // foo's tests should not see classes from foo.test_support.
         "foo.bar.test_support"
     },
+    exports = {
+        // Used by foo. Should only be visible by foo.bar's tests.
+        "tee",
+
+        // Used to test classpath scanning in foo.
+        "external:com.sun.jersey/jersey-core@1.1.5.1"
+    },
     mainClass = "bake.example.foo.bar.Bar"
 ) module foo.bar;
