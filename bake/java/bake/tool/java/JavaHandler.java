@@ -133,7 +133,7 @@ public class JavaHandler implements Handler<Java> {
     states.put(this, TaskState.RUNNING);
 
     // Execute against dependencies first.
-    for (Module dependency : directDependencies(strategy != NO_TESTS)) {
+    for (Module dependency : directModules(strategy != NO_TESTS)) {
       dependency.javaHandler().walk(states, task, strategy == ALL_TESTS ? ALL_TESTS : NO_TESTS);
     }
 
@@ -144,14 +144,52 @@ public class JavaHandler implements Handler<Java> {
   }
 
   /** Returns the set of direct dependencies for this module. */
-  public Collection<Module> directDependencies(boolean includeTests) throws BakeError, IOException {
-    List<Module> directDependencies = Lists.newArrayList();
-    Set<String> dependencies = includeTests ? meld(java.dependencies(), java.testDependencies())
-        : Sets.newHashSet(java.dependencies());
+  public Collection<Module> directModules(boolean includeTests) throws BakeError, IOException {
+    List<Module> modules = Lists.newArrayList();
+    Set<String> dependencies = includeTests ? allDependencies() : mainDependencies();
     for (String dependency : dependencies) {
-      if (!isExternal(dependency)) directDependencies.add(repository.moduleByName(dependency));
+      if (!isExternal(dependency)) modules.add(repository.moduleByName(dependency));
     }
-    return directDependencies;
+    return modules;
+  }
+
+  /**
+   * Returns the main direct dependencies, including those exported by other modules.
+   */
+  public Set<String> mainDependencies() throws BakeError, IOException {
+    return mergeExports(java.dependencies());
+  }
+
+  /**
+   * Returns all direct test dependencies, including those exported by other modules. Filters
+   * out dependencies already included in mainDependencies().
+   */
+  public Set<String> testDependencies() throws BakeError, IOException {
+    Set<String> testDependencies = mergeExports(java.testDependencies());
+    testDependencies.removeAll(mainDependencies());
+    return testDependencies;
+  }
+
+  /**
+   * Returns all direct dependencies, including those exported by other modules.
+   */
+  public Set<String> allDependencies() throws BakeError, IOException {
+    Set<String> allDependencies = mergeExports(java.testDependencies());
+    allDependencies.addAll(mainDependencies());
+    return allDependencies;
+  }
+
+  private Set<String> mergeExports(String[] dependencies) throws BakeError, IOException {
+    Set<String> all = Sets.newLinkedHashSet();
+    for (String dependency : dependencies) {
+      all.add(dependency);
+      if (!isExternal(dependency)) {
+        // Add exported dependencies, too.
+        Module other = repository.moduleByName(dependency);
+        all.addAll(Arrays.asList(other.javaHandler().annotation().exports()));
+      }
+    }
+    return all;
   }
 
   /** Gathers jar files needed to run this module. Includes tests. */
@@ -176,18 +214,16 @@ public class JavaHandler implements Handler<Java> {
   }
 
   /** Returns this module's first order external dependencies. */
-  Iterable<ExternalDependency> externalDependencies()
-      throws BakeError {
-    return externalDependencies(java.dependencies());
+  Iterable<ExternalDependency> externalDependencies() throws BakeError, IOException {
+    return externalDependencies(mainDependencies());
   }
 
   /** Returns this module's first order external test dependencies. */
-  Iterable<ExternalDependency> externalTestDependencies()
-      throws BakeError {
-    return externalDependencies(java.testDependencies());
+  Iterable<ExternalDependency> externalTestDependencies() throws BakeError, IOException {
+    return externalDependencies(testDependencies());
   }
 
-  private Iterable<ExternalDependency> externalDependencies(String[] dependencies)
+  private Iterable<ExternalDependency> externalDependencies(Set<String> dependencies)
       throws BakeError {
     List<ExternalDependency> externalDependencies = Lists.newArrayList();
     for (String dependency : dependencies) {
@@ -207,7 +243,7 @@ public class JavaHandler implements Handler<Java> {
 
       // Compile main classes.
       IncrementalCompiler mainCompiler = compilerProvider.get();
-      appendCompilationDependencies(mainCompiler, java.dependencies());
+      appendCompilationDependencies(mainCompiler, mainDependencies());
       for (File jar : jars()) mainCompiler.appendClasspath(jar);
       for (String sourceDirectory : java.source()) {
         mainCompiler.appendSourceDirectory(new File(module.directory(), sourceDirectory));
@@ -221,8 +257,8 @@ public class JavaHandler implements Handler<Java> {
       IncrementalCompiler testCompiler = compilerProvider.get();
       testCompiler.appendClasspath(classesDirectory());
       for (File jar : jars()) testCompiler.appendClasspath(jar);
-      appendCompilationDependencies(testCompiler, java.dependencies());
-      appendCompilationDependencies(testCompiler, java.testDependencies());
+      appendCompilationDependencies(testCompiler, mainDependencies());
+      appendCompilationDependencies(testCompiler, testDependencies());
       for (String sourceDirectory : java.testSource()) {
         testCompiler.appendSourceDirectory(new File(module.directory(), sourceDirectory));
       }
@@ -237,7 +273,7 @@ public class JavaHandler implements Handler<Java> {
   }
 
   private void appendCompilationDependencies(IncrementalCompiler compiler,
-      String[] dependencies) throws BakeError, IOException {
+      Set<String> dependencies) throws BakeError, IOException {
     for (String dependency : dependencies) {
       if (isExternal(dependency)) {
         ExternalDependency parsed = ExternalDependency.parse(dependency);
@@ -263,7 +299,7 @@ public class JavaHandler implements Handler<Java> {
   }
 
   /** Combines elements from each array into a single set. */
-  static <T> Set<T> meld(T[]... arrays) {
+  private static <T> Set<T> meld(T[]... arrays) {
     Set<T> set = Sets.newLinkedHashSet();
     for (T[] array : arrays) set.addAll(Arrays.asList(array));
     return set;
@@ -454,6 +490,7 @@ public class JavaHandler implements Handler<Java> {
       }
     }
   }
+
 
   // Create directories:
 

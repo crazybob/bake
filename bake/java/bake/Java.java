@@ -29,6 +29,25 @@ public @interface Java {
    */
   String[] dependencies() default {};
 
+  // TODO: Support inheriting the version from dependencies().
+
+  /**
+   * Dependencies this modules exports as if they were part of this module. Useful for creating
+   * aliases and for batch dependency inclusion. Exclusively provides dependencies to other modules.
+   * Does not affect the dependencies used to compile or run this module.
+   */
+  String[] exports() default {};
+
+  /*
+    TODO:
+      - Done: External dependencies
+      - Done: IntelliJ config
+      - Done: Compilation
+      - Done: Executable jar
+      - Done? Tests
+      - Done: walk()
+   */
+
   /**
    * Identifies the main class. If set, Bake will be an executable jar
    * containing all of this module's dependencies.
