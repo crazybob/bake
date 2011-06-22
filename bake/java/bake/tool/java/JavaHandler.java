@@ -153,29 +153,44 @@ public class JavaHandler implements Handler<Java> {
     return modules;
   }
 
+  private Set<String> mainDependencies;
+
   /**
    * Returns the main direct dependencies, including those exported by other modules.
    */
   public Set<String> mainDependencies() throws BakeError, IOException {
-    return mergeExports(java.dependencies());
+    if (mainDependencies == null) {
+      mainDependencies = Collections.unmodifiableSet(mergeExports(java.dependencies()));
+    }
+    return mainDependencies;
   }
+
+  private Set<String> testDependencies;
 
   /**
    * Returns all direct test dependencies, including those exported by other modules. Filters
    * out dependencies already included in mainDependencies().
    */
   public Set<String> testDependencies() throws BakeError, IOException {
-    Set<String> testDependencies = mergeExports(java.testDependencies());
-    testDependencies.removeAll(mainDependencies());
+    if (testDependencies == null) {
+      testDependencies = mergeExports(java.testDependencies());
+      testDependencies.removeAll(mainDependencies());
+      testDependencies = Collections.unmodifiableSet(testDependencies());
+    }
     return testDependencies;
   }
+
+  private Set<String> allDependencies;
 
   /**
    * Returns all direct dependencies, including those exported by other modules.
    */
   public Set<String> allDependencies() throws BakeError, IOException {
-    Set<String> allDependencies = mergeExports(java.testDependencies());
-    allDependencies.addAll(mainDependencies());
+    if (allDependencies == null) {
+      allDependencies = mergeExports(java.testDependencies());
+      allDependencies.addAll(mainDependencies());
+      allDependencies = Collections.unmodifiableSet(allDependencies());
+    }
     return allDependencies;
   }
 
