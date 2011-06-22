@@ -8,7 +8,7 @@
         "tee",
 
         // foo's tests should not see classes from foo.test_support.
-        "foo.test_support"
+        "foo.bar.test_support"
     },
     mainClass = "bake.example.foo.bar.Bar"
 ) module foo.bar;
