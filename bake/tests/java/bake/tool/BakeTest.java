@@ -21,7 +21,7 @@ public class BakeTest extends TestCase {
       com.google.common.io.Files.deleteRecursively(out);
   }
 
-  public void testFoo() throws IOException, InterruptedException {
+  public void testRepo() throws IOException, InterruptedException {
     // We build foo twice. Once clean and then again.
     for (int i = 0; i < 2; i++) {
       System.out.println("Test Build #" + i);
@@ -40,11 +40,9 @@ public class BakeTest extends TestCase {
         .start();
     ByteStreams.copy(p.getInputStream(), bout);
     assertEquals("OK", new String(bout.toByteArray()));
-  }
 
-  public void testBar() throws Exception {
     // Build and test foo.bar.
-    Process p = new ProcessBuilder(
+    p = new ProcessBuilder(
         new File("../out/bin/bake").getCanonicalPath(), "-v", "foo.bar")
         .redirectErrorStream(true)
         .directory(new File("tests/repo"))
@@ -52,16 +50,15 @@ public class BakeTest extends TestCase {
     ByteStreams.copy(p.getInputStream(), System.out);
     assertEquals(0, p.waitFor());
 
-    ByteArrayOutputStream bout = new ByteArrayOutputStream();
+    bout = new ByteArrayOutputStream();
     p = new ProcessBuilder("tests/repo/out/bin/foo.bar")
         .redirectErrorStream(true)
         .start();
     ByteStreams.copy(p.getInputStream(), bout);
     assertEquals("OK", new String(bout.toByteArray()));
-  }
 
-  public void testAll() throws Exception {
-    Process p = new ProcessBuilder(
+    // Bake all.
+    p = new ProcessBuilder(
         new File("../out/bin/bake").getCanonicalPath(), "-v", "all")
         .redirectErrorStream(true)
         .directory(new File("tests/repo"))

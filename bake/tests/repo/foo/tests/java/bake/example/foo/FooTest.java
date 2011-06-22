@@ -1,7 +1,6 @@
 // Copyright 2011 Square, Inc.
 package bake.example.foo;
 
-import bake.example.foo.test_support.NotInBar;
 import java.io.File;
 import java.io.IOException;
 import junit.framework.TestCase;
@@ -32,7 +31,11 @@ public class FooTest extends TestCase {
     Class.forName(org.apache.log4j.Logger.class.getName());
   }
 
-  public void testInternalTestDependencyIsVisible() throws ClassNotFoundException {
-    Class.forName(NotInBar.class.getName());
+  public void testInternalTransitiveTestDependencyIsntVisible() {
+    try {
+      // Included by foo.bar's tests and shouldn't be visible here.
+      Class.forName("bake.example.foo.test_support.NotInFoo");
+      fail();
+    } catch (ClassNotFoundException e) { /* expected */ }
   }
 }

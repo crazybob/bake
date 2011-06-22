@@ -26,6 +26,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import static bake.tool.java.WalkStrategy.NO_TESTS;
+
 /**
  * Creates a One-Jar archive. See http://one-jar.sourceforge.net/.
  *
@@ -138,7 +140,7 @@ class OneJar { // TODO: Extend ExecutableJar.
           files.put("lib/" + baseName + "-" + jar.getName(), jar);
         }
       }
-    }, false);
+    }, NO_TESTS);
   }
 
   /** Maps external dependencies to jars inside of our One-Jar archive. */
