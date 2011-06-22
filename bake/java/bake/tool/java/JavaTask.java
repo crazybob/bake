@@ -14,4 +14,7 @@ public interface JavaTask {
 
   /** Executes this task against the given handler. */
   void execute(JavaHandler handler) throws BakeError, IOException;
+
+  /** Progressive verb (ending in -ing) or phrase describing this task. */
+  String description();
 }

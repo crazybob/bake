@@ -23,7 +23,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-import static bake.tool.java.WalkStrategy.NO_TESTS;
+import static bake.tool.java.WalkStrategy.EXCLUDING_TESTS;
 
 /**
  * Creates a fat jar that contains all of the dependencies.
@@ -55,7 +55,11 @@ class FatJar extends ExecutableJar {
           }
         }
       }
-    }, NO_TESTS);
+
+      @Override public String description() {
+        return "gathering internal jars for";
+      }
+    }, EXCLUDING_TESTS);
 
     for (ExternalArtifact externalArtifact : handler.externalDependencies.main().values()) {
       ExternalArtifact.Id id = externalArtifact.id;
