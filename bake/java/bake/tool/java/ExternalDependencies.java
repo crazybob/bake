@@ -227,12 +227,12 @@ class ExternalDependencies {
     final JavaHandler root = this.handler;
     root.walk(new JavaTask() {
       @Override public void execute(final JavaHandler handler) throws BakeError, IOException {
-        addExternalDependencies(handler.java.dependencies());
+        addExternalDependencies(handler.mainDependencies());
         // We only care about test dependencies for the current handler.
-        if (root == handler) addExternalDependencies(handler.java.testDependencies());
+        if (root == handler) addExternalDependencies(handler.testDependencies());
       }
 
-      private void addExternalDependencies(String[] dependencies) {
+      private void addExternalDependencies(Set<String> dependencies) {
         for (String dependency : dependencies) if (isExternal(dependency)) all.add(dependency);
       }
     }, ALL_TESTS);
@@ -271,8 +271,8 @@ class ExternalDependencies {
 
       // Declare dependencies.
       out.write("<dependencies>\n");
-      writeDependencies(out, java.dependencies(), false);
-      writeDependencies(out, java.testDependencies(), true);
+      writeDependencies(out, handler.mainDependencies(), false);
+      writeDependencies(out, handler.testDependencies(), true);
       out.write("</dependencies>\n");
 
       out.write("</ivy-module>\n");
@@ -281,7 +281,7 @@ class ExternalDependencies {
     }
   }
 
-  private void writeDependencies(OutputStreamWriter out, String[] dependencies,
+  private void writeDependencies(OutputStreamWriter out, Set<String> dependencies,
       boolean test) throws BakeError,
       IOException {
     String configuration = test ? "test" : "default";

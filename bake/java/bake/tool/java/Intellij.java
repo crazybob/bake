@@ -187,8 +187,8 @@ class Intellij {
       writeResourceDirectories(out, java.testResources(), "TEST");
  
       // Add internal module dependencies.
-      writeModuleDependencies(out, java.dependencies(), null);
-      writeModuleDependencies(out, java.testDependencies(), TEST_SCOPE);
+      writeModuleDependencies(out, handler.mainDependencies(), null);
+      writeModuleDependencies(out, handler.testDependencies(), TEST_SCOPE);
 
       // Write local jars. We export these as if they're part of the module.
       for (File jar : handler.jars()) {
@@ -259,7 +259,7 @@ class Intellij {
     }
   }
 
-  private void writeModuleDependencies(Writer out, String[] dependencies,
+  private void writeModuleDependencies(Writer out, Set<String> dependencies,
       String scope) throws IOException {
     for (String dependency : dependencies) {
       if (!isExternal(dependency)) {
