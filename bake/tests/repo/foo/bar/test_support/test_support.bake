@@ -1,0 +1,5 @@
+@bake.Java(
+  testDependencies = {
+      "external:junit/junit@4.3"
+  }
+) module foo.bar.test_support;

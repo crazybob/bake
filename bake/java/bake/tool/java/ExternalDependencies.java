@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static bake.tool.java.ExternalDependency.isExternal;
+import static bake.tool.java.WalkStrategy.ALL_TESTS;
 
 /**
  * Resolved external dependencies. This class isolates Bake from Ivy.
@@ -113,7 +114,7 @@ class ExternalDependencies {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         handler.externalDependencies.writeIvyXml();
       }
-    }, true);
+    }, ALL_TESTS);
 
     try {
       Ivy ivy = newIvy();
@@ -234,7 +235,7 @@ class ExternalDependencies {
       private void addExternalDependencies(String[] dependencies) {
         for (String dependency : dependencies) if (isExternal(dependency)) all.add(dependency);
       }
-    }, true);
+    }, ALL_TESTS);
     return all;
   }
 
