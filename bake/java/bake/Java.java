@@ -10,8 +10,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Defines a Java module. By convention, tests go in sub-modules named
- * {@code tests}.
+ * Defines a Java module.
  *
  * @author Bob Lee (bob@squareup.com)
  */
@@ -26,7 +25,7 @@ public @interface Java {
 
   /**
    * Identifies dependencies on other Java code by module name. Included
-   * during compliation and at run time.
+   * during compilation and at run time.
    */
   String[] dependencies() default {};
 
@@ -72,4 +71,41 @@ public @interface Java {
    * The software license for this module.
    */
   License license() default License.PROPRIETARY;
+
+  // Tests
+
+  /**
+   * Identifies test dependencies on other Java code by module name. Included
+   * during compilation and at run time. Extends {@link #dependencies()}.
+   */
+  String[] testDependencies() default {};
+
+  /**
+   * Test source directory. Relative to module directory.
+   */
+  String[] testSource() default { "tests/java" };
+
+  /**
+   * Test resource directory. Relative to module directory. Included in classpath
+   * when running tests.
+   */
+  String[] testResources() default { "tests/resources" };
+
+  /**
+   * Main class used to run tests. Bake will pass test class names to this class on the
+   * command line.
+   */
+  String testRunner() default "";
+
+  /**
+   * Working directory to use when running tests.
+   */
+  String testWorkingDirectory() default "";
+
+// TODO: Support this:
+//  /**
+//   * Matches test source files that Bake should run. Matches against a path relative to the
+//   * module root.
+//   */
+//  String[] testIncludes() default { ".*Test\\.java" };
 }

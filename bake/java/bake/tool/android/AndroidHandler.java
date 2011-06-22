@@ -3,8 +3,8 @@ package bake.tool.android;
 
 import bake.Android;
 import bake.tool.BakeError;
-import bake.tool.Module;
 import bake.tool.Handler;
+import bake.tool.Module;
 import bake.tool.java.JavaHandler;
 
 import javax.inject.Inject;

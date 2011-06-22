@@ -1,12 +1,22 @@
 @bake.Java(
     dependencies = {
+        // Internal dependency.
         "foo.bar",
-        "tee",
-        "external:com.google.inject/guice@3.0",
-        "external:com.sun.jersey/jersey-server@1.1.5.1",
+
+        // Used to test classpath scanning.
         "external:com.sun.jersey/jersey-core@1.1.5.1",
-        "external:javax.ws.rs/jsr311-api@1.1.1",
-        "external.one_jar.boot"
+
+        // Internal, test-only dependency.
+        "tee"
+    },
+    testDependencies = {
+        "external:junit/junit@4.3",
+
+        // Log4j uses "bundle" instead of "jar" for its artifact type.
+        "external:log4j/log4j@1.2.16",
+
+        // foo.bar's tests should not see classes from foo.test_support.
+        "foo.test_support"
     },
     mainClass = "bake.example.foo.Foo"
 ) module foo;

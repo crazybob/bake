@@ -5,8 +5,7 @@
       <module fileurl="file://$PROJECT_DIR$/external/one_jar/boot/external-one_jar-boot.iml" filepath="$PROJECT_DIR$/external/one_jar/boot/external-one_jar-boot.iml" />
       <module fileurl="file://$PROJECT_DIR$/foo/foo.iml" filepath="$PROJECT_DIR$/foo/foo.iml" />
       <module fileurl="file://$PROJECT_DIR$/foo/bar/foo-bar.iml" filepath="$PROJECT_DIR$/foo/bar/foo-bar.iml" />
-      <module fileurl="file://$PROJECT_DIR$/foo/bar/tests/foo-bar-tests.iml" filepath="$PROJECT_DIR$/foo/bar/tests/foo-bar-tests.iml" />
-      <module fileurl="file://$PROJECT_DIR$/foo/tests/foo-tests.iml" filepath="$PROJECT_DIR$/foo/tests/foo-tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/foo/test_support/foo-test_support.iml" filepath="$PROJECT_DIR$/foo/test_support/foo-test_support.iml" />
       <module fileurl="file://$PROJECT_DIR$/tee/tee.iml" filepath="$PROJECT_DIR$/tee/tee.iml" />
     </modules>
   </component>
