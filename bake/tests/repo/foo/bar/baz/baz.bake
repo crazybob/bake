@@ -1,0 +1,5 @@
+@bake.Java(
+  exports = {
+      "external:commons-lang/commons-lang@2.6"
+  }
+) module foo.bar.baz;

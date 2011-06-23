@@ -12,6 +12,7 @@ import java.util.List;
 public class Foo {
 
   public static void main(String[] args) throws Exception {
+    testTransitiveExport();
     testClasspathScanning();
     testDirectInternalDependency();
     testTransitiveDependencyIsVisible();
@@ -19,6 +20,11 @@ public class Foo {
     testTeeIsVisible();
 
     System.out.print("OK"); // Read by BakeTest.
+  }
+
+  private static void testTransitiveExport() throws ClassNotFoundException {
+    // This comes from foo.bar.baz.
+    Class.forName(org.apache.commons.lang.BitField.class.getName());
   }
 
   private static void testJunitIsntVisible() {
