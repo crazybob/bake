@@ -19,3 +19,4 @@
 - Download source code for transitive deps
   (https://issues.apache.org/jira/browse/IVY-1003)
 - Detect removed files and rebuild accordingly.
+- Create .bake file from POM.

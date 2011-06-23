@@ -254,16 +254,20 @@ public class JavaHandler implements Handler<Java> {
     final List<File> jarFiles = Lists.newArrayList();
 
     // Include tests for this module but not transitive dependencies.
-    walk(new JavaTask() {
-      @Override public void execute(JavaHandler handler) throws BakeError, IOException {
-        jarFiles.add(handler.classesJar());
-        jarFiles.addAll(handler.jars());
-      }
+    walk(
+        new JavaTask() {
+          @Override public void execute(JavaHandler handler) throws BakeError, IOException {
+            jarFiles.add(handler.classesJar());
+            jarFiles.addAll(handler.jars());
+          }
 
-      @Override public String description() {
-        return "gathering test jars for";
-      }
-    }, EXCLUDING_TESTS, allDependencies());
+          @Override public String description() {
+            return "gathering test jars for";
+          }
+        },
+        EXCLUDING_TESTS,  // for transitive dependencies
+        allDependencies() // includes test dependencies for this module
+    );
 
     addExternalJarsTo(jarFiles);
     return jarFiles;
