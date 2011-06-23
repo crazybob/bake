@@ -161,7 +161,7 @@ public class JavaHandler implements Handler<Java> {
 
     if (stack.contains(this)) {
       throw new BakeError("Encountered circular dependency while "
-          + task + " " + module.name() + ". Path: " + stack);
+          + task.description() + " " + module.name() + ". Path: " + stack);
     }
 
     stack.add(this);
