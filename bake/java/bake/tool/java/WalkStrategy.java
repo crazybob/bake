@@ -1,6 +1,12 @@
 // Copyright 2011 Square, Inc.
 package bake.tool.java;
 
+import bake.tool.BakeError;
+import com.google.common.collect.Sets;
+
+import java.io.IOException;
+import java.util.Set;
+
 /**
  * Determines whether or not to traverse test dependencies when walking the dependency graph.
  *
@@ -9,11 +15,26 @@ package bake.tool.java;
 public enum WalkStrategy {
 
   /** Never traverse test dependencies. */
-  NO_TESTS,
-
-  /** Traverse test dependencies in the current module but not transitive test dependencies. */
-  CURRENT_TESTS,
+  EXCLUDING_TESTS {
+    @Override Set<String> directDependenciesFor(JavaHandler handler) throws BakeError, IOException {
+      return handler.mainDependencies();
+    }
+  },
 
   /** Always traverse test dependencies. */
-  ALL_TESTS
+  INCLUDING_TESTS {
+    @Override Set<String> directDependenciesFor(JavaHandler handler) throws BakeError, IOException {
+      return handler.allDependencies();
+    }
+  },
+
+  /** Traverses exports. See {@link bake.Java#exports()}. */
+  EXPORTS {
+    @Override Set<String> directDependenciesFor(JavaHandler handler) throws BakeError, IOException {
+      return Sets.newHashSet(handler.java.exports());
+    }
+  };
+
+  /** Returns dependencies that should be followed from the given handler. */
+  abstract Set<String> directDependenciesFor(JavaHandler handler) throws BakeError, IOException;
 }

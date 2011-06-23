@@ -11,7 +11,6 @@ import bake.tool.Repository;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.io.ByteStreams;
 
@@ -21,19 +20,20 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static bake.tool.java.ExternalDependency.isExternal;
-import static bake.tool.java.WalkStrategy.ALL_TESTS;
-import static bake.tool.java.WalkStrategy.CURRENT_TESTS;
-import static bake.tool.java.WalkStrategy.NO_TESTS;
+import static bake.tool.java.WalkStrategy.INCLUDING_TESTS;
+import static bake.tool.java.WalkStrategy.EXPORTS;
+import static bake.tool.java.WalkStrategy.EXCLUDING_TESTS;
+import static java.util.Arrays.asList;
 
 /**
  * Bakes Java libraries.
@@ -84,7 +84,11 @@ public class JavaHandler implements Handler<Java> {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         handler.externalDependencies.resolve();
       }
-    }, ALL_TESTS);
+
+      @Override public String description() {
+        return "resolving external dependencies for";
+      }
+    }, INCLUDING_TESTS);
 
     intellij.updateAll();
 
@@ -92,7 +96,11 @@ public class JavaHandler implements Handler<Java> {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         handler.compile();
       }
-    }, ALL_TESTS);
+
+      @Override public String description() {
+        return "compiling";
+      }
+    }, INCLUDING_TESTS);
 
     if (!java.mainClass().equals("")) executableJar.bake();
 
@@ -100,7 +108,11 @@ public class JavaHandler implements Handler<Java> {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         handler.runTests();
       }
-    }, ALL_TESTS);
+
+      @Override public String description() {
+        return "testing";
+      }
+    }, INCLUDING_TESTS);
   }
 
   /**
@@ -108,49 +120,74 @@ public class JavaHandler implements Handler<Java> {
    * module depends on and then against this module.
    */
   public void walk(JavaTask task, WalkStrategy strategy) throws BakeError, IOException {
-    walk(Maps.<JavaHandler, TaskState>newHashMap(), task, strategy);
+    walk(task, strategy, strategy.directDependenciesFor(this));
   }
 
-  /** State of a task for a given module. */
-  private enum TaskState { RUNNING, DONE }
+  /**
+   * Walks the module tree from bottom to top. Executes the given task against each module this
+   * module depends on and then against this module.
+   *
+   * @param dependencies to start with
+   */
+  public void walk(JavaTask task, WalkStrategy strategy, String[] dependencies)
+      throws BakeError, IOException {
+    walk(task, strategy, Sets.newHashSet(dependencies));
+  }
+
+  /**
+   * Walks the module tree from bottom to top. Executes the given task against each module this
+   * module depends on and then against this module.
+   *
+   * @param dependencies to start with
+   */
+  public void walk(JavaTask task, WalkStrategy strategy, Set<String> dependencies)
+      throws BakeError, IOException {
+    // Note: LinkedHashSet maintains insertion order.
+    walk(new LinkedHashSet<JavaHandler>(), new HashSet<JavaHandler>(), task, strategy,
+        dependencies);
+  }
 
   /**
    * Walks the module tree from bottom to top. Executes the given task against each module this
    * module depends on and then against this module. Uses states to detect circular dependencies
    * and avoid duplication.
    */
-  private void walk(Map<JavaHandler, TaskState> states, JavaTask task,
-      WalkStrategy strategy) throws BakeError, IOException {
-    TaskState taskState = states.get(this);
-    if (taskState == TaskState.DONE) {
+  private void walk(Set<JavaHandler> stack, Set<JavaHandler> finished, JavaTask task,
+      WalkStrategy strategy, Set<String> dependencies) throws BakeError, IOException {
+    if (finished.contains(this)) {
       Log.v("Already executed %s for %s.", task, module.name());
       return;
     }
-    if (taskState == TaskState.RUNNING) {
-      // TODO: Output path.
-      throw new BakeError("Circular dependency in " + module.name() + ".");
-    }
-    states.put(this, TaskState.RUNNING);
 
-    // Execute against dependencies first.
-    for (Module dependency : directModules(strategy != NO_TESTS)) {
-      dependency.javaHandler().walk(states, task, strategy == ALL_TESTS ? ALL_TESTS : NO_TESTS);
+    if (stack.contains(this)) {
+      throw new BakeError("Encountered circular dependency while "
+          + task.description() + " " + module.name() + ". Path: " + stack);
     }
 
-    // Execute against this module.
-    task.execute(this);
+    stack.add(this);
+    try {
+      // Execute against dependencies first.
+      for (JavaHandler other : dependenciesToHandlers(dependencies)) {
+        other.walk(stack, finished, task, strategy, strategy.directDependenciesFor(other));
+      }
 
-    states.put(this, TaskState.DONE);
+      // Execute against this module.
+      task.execute(this);
+
+      finished.add(this);
+    } finally {
+      stack.remove(this);
+    }
   }
 
-  /** Returns the set of direct dependencies for this module. */
-  public Collection<Module> directModules(boolean includeTests) throws BakeError, IOException {
-    List<Module> modules = Lists.newArrayList();
-    Set<String> dependencies = includeTests ? allDependencies() : mainDependencies();
+  /** Filters out internal dependencies and looks up the corresponding modules. */
+  private Collection<JavaHandler> dependenciesToHandlers(Set<String> dependencies)
+      throws BakeError, IOException {
+    List<JavaHandler> handlers = Lists.newArrayList();
     for (String dependency : dependencies) {
-      if (!isExternal(dependency)) modules.add(repository.moduleByName(dependency));
+      if (!isExternal(dependency)) handlers.add(repository.moduleByName(dependency).javaHandler());
     }
-    return modules;
+    return handlers;
   }
 
   private Set<String> mainDependencies;
@@ -160,7 +197,7 @@ public class JavaHandler implements Handler<Java> {
    */
   public Set<String> mainDependencies() throws BakeError, IOException {
     if (mainDependencies == null) {
-      mainDependencies = Collections.unmodifiableSet(mergeExports(java.dependencies()));
+      mainDependencies = Collections.unmodifiableSet(expand(java.dependencies()));
     }
     return mainDependencies;
   }
@@ -173,7 +210,7 @@ public class JavaHandler implements Handler<Java> {
    */
   public Set<String> testDependencies() throws BakeError, IOException {
     if (testDependencies == null) {
-      testDependencies = mergeExports(java.testDependencies());
+      testDependencies = expand(java.testDependencies());
       testDependencies.removeAll(mainDependencies());
       testDependencies = Collections.unmodifiableSet(testDependencies());
     }
@@ -187,36 +224,51 @@ public class JavaHandler implements Handler<Java> {
    */
   public Set<String> allDependencies() throws BakeError, IOException {
     if (allDependencies == null) {
-      allDependencies = mergeExports(java.testDependencies());
+      allDependencies = expand(java.testDependencies());
       allDependencies.addAll(mainDependencies());
       allDependencies = Collections.unmodifiableSet(allDependencies());
     }
     return allDependencies;
   }
 
-  private Set<String> mergeExports(String[] dependencies) throws BakeError, IOException {
-    Set<String> all = Sets.newLinkedHashSet();
-    for (String dependency : dependencies) {
-      all.add(dependency);
-      if (!isExternal(dependency)) {
-        // Add exported dependencies, too.
-        Module other = repository.moduleByName(dependency);
-        all.addAll(Arrays.asList(other.javaHandler().annotation().exports()));
+  /**
+   * Expands the given dependency set to include dependencies exported by transitive dependencies.
+   */
+  private Set<String> expand(String[] dependencies) throws BakeError, IOException {
+    final Set<String> all = Sets.newLinkedHashSet();
+    all.addAll(asList(dependencies));
+    walk(new JavaTask() {
+      @Override public void execute(JavaHandler handler) throws BakeError, IOException {
+        if (handler != JavaHandler.this) all.addAll(asList(handler.java.exports()));
       }
-    }
+
+      @Override public String description() {
+        return "traversing exports from";
+      }
+    }, EXPORTS, dependencies);
     return all;
   }
 
   /** Gathers jar files needed to run this module. Includes tests. */
   private List<File> allJarsForTests() throws BakeError, IOException {
-    // TODO: Exclude jar files from our dependencies' tests.
     final List<File> jarFiles = Lists.newArrayList();
-    walk(new JavaTask() {
-      @Override public void execute(JavaHandler handler) throws BakeError, IOException {
-        jarFiles.add(handler.classesJar());
-        jarFiles.addAll(handler.jars());
-      }
-    }, CURRENT_TESTS);
+
+    // Include tests for this module but not transitive dependencies.
+    walk(
+        new JavaTask() {
+          @Override public void execute(JavaHandler handler) throws BakeError, IOException {
+            jarFiles.add(handler.classesJar());
+            jarFiles.addAll(handler.jars());
+          }
+
+          @Override public String description() {
+            return "gathering test jars for";
+          }
+        },
+        EXCLUDING_TESTS,  // for transitive dependencies
+        allDependencies() // includes test dependencies for this module
+    );
+
     addExternalJarsTo(jarFiles);
     return jarFiles;
   }
@@ -316,7 +368,7 @@ public class JavaHandler implements Handler<Java> {
   /** Combines elements from each array into a single set. */
   private static <T> Set<T> meld(T[]... arrays) {
     Set<T> set = Sets.newLinkedHashSet();
-    for (T[] array : arrays) set.addAll(Arrays.asList(array));
+    for (T[] array : arrays) set.addAll(asList(array));
     return set;
   }
 
@@ -461,7 +513,7 @@ public class JavaHandler implements Handler<Java> {
 
     String testRunner = java.testRunner().equals("") ? "org.junit.runner.JUnitCore"
         : java.testRunner();
-    command.addAll(Arrays.asList("java", "-classpath", classpath, testRunner));
+    command.addAll(asList("java", "-classpath", classpath, testRunner));
     command.addAll(testClassNames);
 
     Log.v(command.toString());
@@ -544,5 +596,9 @@ public class JavaHandler implements Handler<Java> {
     }
 
     Log.i("Created " + repository.relativePath(moduleRoot) + ".");
+  }
+
+  @Override public String toString() {
+    return module.name();
   }
 }

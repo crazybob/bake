@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static bake.tool.java.ExternalDependency.isExternal;
-import static bake.tool.java.WalkStrategy.ALL_TESTS;
+import static bake.tool.java.WalkStrategy.INCLUDING_TESTS;
 
 /**
  * Generates IntelliJ IDEA configurations. Bake currently supports IntelliJ's
@@ -94,7 +94,11 @@ class Intellij {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         handler.intellij.writeModuleXml();
       }
-    }, ALL_TESTS);
+
+      @Override public String description() {
+        return "writing IntelliJ module XML for";
+      }
+    }, INCLUDING_TESTS);
 
     // Add module files to ./idea/modules.xml.
     updateModulesXml();
@@ -347,7 +351,11 @@ class Intellij {
           modulePaths.add("$PROJECT_DIR$/"
               + repository.relativePath(moduleXmlFor(handler.module)));
         }
-      }, ALL_TESTS);
+
+        @Override public String description() {
+          return "updating .idea/modules.xml for";
+        }
+      }, INCLUDING_TESTS);
     }
 
     @Override
