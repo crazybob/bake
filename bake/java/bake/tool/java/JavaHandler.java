@@ -48,7 +48,7 @@ public class JavaHandler implements Handler<Java> {
   final ExternalDependencies externalDependencies;
   final Intellij intellij;
   final Provider<IncrementalCompiler> compilerProvider;
-  final ExecutableJar executableJar = new FatJar(this);
+  ExecutableJar executableJar = new FatJar(this);
 
   @Inject JavaHandler(Java java, Repository repository, Module module,
       Provider<IncrementalCompiler> compilerProvider, ExternalDependencies externalDependencies,
@@ -102,6 +102,11 @@ public class JavaHandler implements Handler<Java> {
       }
     }, INCLUDING_TESTS);
 
+    // Signed jars must be left intact, so FatJar is not suitable.
+    if (externalDependencies.hasSignedJars()) {
+      executableJar = new OneJar(this);
+      Log.i("Found signed dependency jars, baking OneJar");
+    }
     if (!java.mainClass().equals("")) executableJar.bake();
 
     walk(new JavaTask() {

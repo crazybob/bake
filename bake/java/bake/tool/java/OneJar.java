@@ -33,7 +33,7 @@ import static bake.tool.java.WalkStrategy.EXCLUDING_TESTS;
  *
  * @author Bob Lee (bob@squareup.com)
  */
-class OneJar { // TODO: Extend ExecutableJar.
+class OneJar extends ExecutableJar {
 
   /**
    * If we prepend a jar with this script, that jar will be directly
@@ -48,13 +48,14 @@ class OneJar { // TODO: Extend ExecutableJar.
   final JavaHandler handler;
 
   OneJar(JavaHandler handler) {
+    super(handler);
     this.handler = handler;
   }
 
   /**
    * Creates an executable jar containing all of this module's dependencies.
    */
-  @Profile void bake() throws BakeError, IOException {
+  @Profile @Override void makeJar() throws BakeError, IOException {
     // Maps paths (in zip) to files.
     Map<String, File> files = Maps.newHashMap();
 
