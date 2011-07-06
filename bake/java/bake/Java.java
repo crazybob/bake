@@ -111,6 +111,11 @@ public @interface Java {
    */
   String testWorkingDirectory() default "";
 
+  /**
+   * Build a OneJar output instead of FatJar. This is necessary if any dependencies are signed.
+   */
+  boolean oneJar() default false;
+
 // TODO: Support this:
 //  /**
 //   * Matches test source files that Bake should run. Matches against a path relative to the

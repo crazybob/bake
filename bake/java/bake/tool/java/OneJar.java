@@ -6,8 +6,6 @@ import bake.tool.Files;
 import bake.tool.Log;
 import bake.tool.Module;
 import bake.tool.Profile;
-import com.google.common.base.Joiner;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 
@@ -17,7 +15,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.List;
 import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.jar.JarOutputStream;
@@ -39,17 +36,9 @@ class OneJar extends ExecutableJar {
    * If we prepend a jar with this script, that jar will be directly
    * executable.
    */
-  // -DuseJavaUtilZip addresses
-  // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6865530.
-  private static final String SCRIPT = "#!/bin/sh\n"
-      + "set -e\n"
-      + "exec java -DuseJavaUtilZip $VM_ARGS -jar \"$0\" $ARGS \"$@\"\n";
-
-  final JavaHandler handler;
 
   OneJar(JavaHandler handler) {
     super(handler);
-    this.handler = handler;
   }
 
   /**
@@ -89,9 +78,8 @@ class OneJar extends ExecutableJar {
     File temp = new File(oneJarFile.getPath() + ".temp");
     FileOutputStream fout = new FileOutputStream(temp);
     try {
-      writeScriptTo(fout);
       ZipOutputStream zout = new JarOutputStream(
-          new BufferedOutputStream(fout), oneJarManifest());
+          new BufferedOutputStream(fout), manifest());
       copyOneJarBootTo(zout);
       zip(zout, files);
       zout.finish();
@@ -107,24 +95,6 @@ class OneJar extends ExecutableJar {
     ByteStreams.copy(chmod.getInputStream(), System.out);
 
     Files.rename(temp, oneJarFile);
-  }
-
-  /** Writes a script that makes a jar directly executable. */
-  private void writeScriptTo(FileOutputStream fout) {
-    String script = SCRIPT.replace("$VM_ARGS", join(handler.java.vmArgs()))
-      .replace("$ARGS", join(handler.java.args()));
-    try {
-      fout.write(script.getBytes("UTF-8"));
-    } catch (IOException e) {
-      throw new AssertionError(e);
-    }
-  }
-
-  private String join(String[] args) {
-    List<String> filtered = Lists.newArrayListWithCapacity(args.length);
-    // TODO: More escaping?
-    for (String arg : args) filtered.add("\"" + arg + "\"");
-    return Joiner.on(' ').join(filtered);
   }
 
   private void addInternalDependenciesTo(final Map<String, File> files) throws BakeError,
@@ -186,7 +156,7 @@ class OneJar extends ExecutableJar {
   }
 
   /** Returns the manifest for our One-Jar archive. */
-  private Manifest oneJarManifest() {
+  private Manifest manifest() {
     Manifest manifest = new Manifest();
     @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
     Attributes attributes = manifest.getMainAttributes();
@@ -222,7 +192,7 @@ class OneJar extends ExecutableJar {
 
   /** Returns the path for the One-Jar executable jar. */
   private File oneJarFile() throws IOException {
-    return new File(handler.repository.outputDirectory("bin"),
-        handler.module.name());
+    return new File(handler.repository.outputDirectory("jars"),
+        handler.module.name() + ".jar");
   }
 }

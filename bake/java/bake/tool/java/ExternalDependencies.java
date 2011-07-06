@@ -92,29 +92,6 @@ class ExternalDependencies {
     return ivyResults.allArtifacts;
   }
 
-  /** Returns true if any dependency jars are signed. */
-  boolean hasSignedJars() throws BakeError, IOException {
-    if (ivyResults == null) resolve();
-
-    Collection<ExternalArtifact> mainArtifacts = ivyResults.mainArtifacts.values();
-    for (ExternalArtifact externalArtifact : mainArtifacts) {
-      if (externalArtifact.id.type == ExternalArtifact.Type.JAR) {
-        FileInputStream fin = new FileInputStream(externalArtifact.file);
-        JarInputStream jin = new JarInputStream(new BufferedInputStream(fin));
-
-        JarEntry jarEntry;
-        while ((jarEntry = jin.getNextJarEntry()) != null) {
-          String filename = jarEntry.getName();
-
-          // Jar contains a signature file
-          if (filename.matches("(?iu)META-INF/.+\\.SF")) return true;
-        }
-      }
-    }
-
-    return false;
-  }
-
   /**
    * Transitively resolves all external dependencies in the given list. Returns references to the
    * jars.
