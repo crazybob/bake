@@ -250,6 +250,27 @@ public class JavaHandler implements Handler<Java> {
     return all;
   }
 
+  private Set<ExternalArtifact.Id> externalProvidedDependencies;
+
+  /**
+   * Returns all externalProvidedDependencies which are external.
+   */
+  public Set<ExternalArtifact.Id> externalProvidedDependencies() {
+    if (externalProvidedDependencies == null) {
+      externalProvidedDependencies = Sets.newHashSet();
+      for (String dependency : java.providedDependencies()) {
+        try {
+          externalProvidedDependencies.add(ExternalDependency.parse(dependency).jarId());
+        } catch (BakeError bakeError) {
+          Log.w("Currently, only external dependencies are supported for providedDependencies");
+        }
+      }
+      externalProvidedDependencies = Collections.unmodifiableSet(externalProvidedDependencies);
+    }
+
+    return externalProvidedDependencies;
+  }
+
   /** Gathers jar files needed to run this module. Includes tests. */
   private List<File> allJarsForTests() throws BakeError, IOException {
     final List<File> jarFiles = Lists.newArrayList();
@@ -454,6 +475,7 @@ public class JavaHandler implements Handler<Java> {
             + module.name() + ")");
       }
       jars.add(jarFile);
+
     }
     return jars;
   }

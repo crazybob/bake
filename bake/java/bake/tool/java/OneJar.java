@@ -6,6 +6,8 @@ import bake.tool.Files;
 import bake.tool.Log;
 import bake.tool.Module;
 import bake.tool.Profile;
+import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 
@@ -15,6 +17,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.jar.JarOutputStream;
@@ -122,7 +125,8 @@ class OneJar extends ExecutableJar {
   private void addExternalDependenciesTo(Map<String, File> files) {
     for (ExternalArtifact externalArtifact : handler.externalDependencies.main().values()) {
       ExternalArtifact.Id id = externalArtifact.id;
-      if (id.type == ExternalArtifact.Type.JAR) {
+      if (id.type == ExternalArtifact.Type.JAR &&
+          !handler.externalProvidedDependencies().contains(id)) {
         files.put("lib/" + id.organization + "-" + id.name + ".jar",
             externalArtifact.file);
       }
@@ -175,6 +179,15 @@ class OneJar extends ExecutableJar {
     // TODO: Specify manifest attributes in .bake files. Put defaults here.
     attributes.put(new Attributes.Name("One-Jar-URL-Factory"),
         "com.simontuffs.onejar.JarClassLoader$OneJarURLFactory");
+
+    List<String> classPathJars = Lists.newArrayList();
+    for (ExternalArtifact.Id id : handler.externalProvidedDependencies()) {
+      classPathJars.add(id.name + ".jar");
+    }
+
+    if (!classPathJars.isEmpty()) {
+      attributes.put(new Attributes.Name("Class-Path"), Joiner.on(" ").join(classPathJars));
+    }
 
     return manifest;
   }

@@ -29,6 +29,12 @@ public @interface Java {
    */
   String[] dependencies() default {};
 
+  /**
+   * Identifies dependencies on other Java code by module name. Included
+   * during compilation and at run time.
+   */
+  String[] providedDependencies() default {};
+
   // TODO: Support inheriting the version from dependencies().
 
   /**
