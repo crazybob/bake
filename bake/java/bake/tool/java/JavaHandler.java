@@ -48,7 +48,7 @@ public class JavaHandler implements Handler<Java> {
   final ExternalDependencies externalDependencies;
   final Intellij intellij;
   final Provider<IncrementalCompiler> compilerProvider;
-  final ExecutableJar executableJar = new FatJar(this);
+  final ExecutableJar executableJar;
 
   @Inject JavaHandler(Java java, Repository repository, Module module,
       Provider<IncrementalCompiler> compilerProvider, ExternalDependencies externalDependencies,
@@ -59,6 +59,7 @@ public class JavaHandler implements Handler<Java> {
     this.intellij = intellij;
     this.compilerProvider = compilerProvider;
     this.externalDependencies = externalDependencies;
+    this.executableJar = java.oneJar() ? new OneJar(this) : new FatJar(this);
 
     externalDependencies.setHandler(this);
     intellij.setHandler(this);
@@ -247,6 +248,27 @@ public class JavaHandler implements Handler<Java> {
       }
     }, EXPORTS, dependencies);
     return all;
+  }
+
+  private Set<ExternalArtifact.Id> externalProvidedDependencies;
+
+  /**
+   * Returns all externalProvidedDependencies which are external.
+   */
+  public Set<ExternalArtifact.Id> externalProvidedDependencies() {
+    if (externalProvidedDependencies == null) {
+      externalProvidedDependencies = Sets.newHashSet();
+      for (String dependency : java.providedDependencies()) {
+        try {
+          externalProvidedDependencies.add(ExternalDependency.parse(dependency).jarId());
+        } catch (BakeError bakeError) {
+          Log.w("Currently, only external dependencies are supported for providedDependencies");
+        }
+      }
+      externalProvidedDependencies = Collections.unmodifiableSet(externalProvidedDependencies);
+    }
+
+    return externalProvidedDependencies;
   }
 
   /** Gathers jar files needed to run this module. Includes tests. */
@@ -453,6 +475,7 @@ public class JavaHandler implements Handler<Java> {
             + module.name() + ")");
       }
       jars.add(jarFile);
+
     }
     return jars;
   }

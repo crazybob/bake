@@ -33,9 +33,12 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.text.ParseException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarInputStream;
 
 import static bake.tool.java.ExternalDependency.isExternal;
 import static bake.tool.java.WalkStrategy.INCLUDING_TESTS;
@@ -106,7 +109,7 @@ class ExternalDependencies {
       this.ivyResults = ivyResults;
       return;
     }
-    
+
     Log.i("Retrieving external dependencies...");
 
     // Write Ivy XML files.

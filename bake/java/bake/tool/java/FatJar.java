@@ -4,6 +4,7 @@ package bake.tool.java;
 import bake.tool.BakeError;
 import bake.tool.Files;
 import bake.tool.Log;
+import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.ByteStreams;
@@ -63,7 +64,8 @@ class FatJar extends ExecutableJar {
 
     for (ExternalArtifact externalArtifact : handler.externalDependencies.main().values()) {
       ExternalArtifact.Id id = externalArtifact.id;
-      if (id.type == ExternalArtifact.Type.JAR) {
+      if (id.type == ExternalArtifact.Type.JAR &&
+          !handler.externalProvidedDependencies().contains(id)) {
         jars.add(externalArtifact.file);
       }
     }
@@ -121,8 +123,16 @@ class FatJar extends ExecutableJar {
     // terrible API. :-(
     attributes.put(Attributes.Name.MANIFEST_VERSION, "1.0");
 
-    attributes.put(new Attributes.Name("Main-Class"),
-        handler.java.mainClass());
+    attributes.put(new Attributes.Name("Main-Class"), handler.java.mainClass());
+
+    List<String> classPathJars = Lists.newArrayList();
+    for (ExternalArtifact.Id id : handler.externalProvidedDependencies()) {
+      classPathJars.add(id.name + ".jar");
+    }
+
+    if (!classPathJars.isEmpty()) {
+      attributes.put(new Attributes.Name("Class-Path"), Joiner.on(" ").join(classPathJars));
+    }
 
     return manifest;
   }
@@ -146,6 +156,9 @@ class FatJar extends ExecutableJar {
       ZipEntry entry;
       while ((entry = in.getNextEntry()) != null) {
         String name = entry.getName();
+        if (name.matches("(?i)META-INF/(INDEX.LIST|.+\\.(SF|DSA))"))
+          continue; // Skip signatures and an index
+
         if (files.add(name)) {
           // Handle directory entries.
           if (name.endsWith("/")) {
