@@ -24,6 +24,8 @@
           root="http://repo.codahale.com" />
       <ibiblio name="oracle" m2compatible="true"
           root="http://download.oracle.com/maven" />
+      <ibiblio name="hibernatemock" m2compatible="true"
+          root="http://hibernatemock.googlecode.com/svn/maven" />
     </chain>
 
     <!--
