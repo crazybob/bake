@@ -25,14 +25,15 @@ abstract class ExecutableJar {
   private static final String SCRIPT_PREFIX = "#!/bin/sh\n"
       + "set -u\n" // Require variables to be set.
       + "set -e\n" // Exit on error.
-      + "tempfile=`mktemp -t bake.XXXXXXXXXX`\n"
-      + "trap \"rm -f $tempfile; exit\" EXIT\n"
-      + "trap \"rm -f $tempfile; kill 0; false; exit\" INT TERM\n"
-      + "cat <<\"EOF\" | openssl enc -d -base64 > $tempfile\n";
+      + "TEMP_FILE=`mktemp -t bake.XXXXXXXXXX`\n"
+      + "trap 'EXIT_CODE=$?; rm -f $TEMP_FILE; exit $EXIT_CODE;' EXIT\n"
+      + "trap 'rm -f $TEMP_FILE; kill 0; wait $CHILD_PID; exit;' INT TERM\n"
+      + "cat <<\"EOF\" | openssl enc -d -base64 > $TEMP_FILE\n";
 
   private static final String SCRIPT_SUFFIX = "EOF\n"
-      + "java $VM_ARGS -jar $tempfile $ARGS \"$@\" &\n"
-      + "wait\n";
+      + "java $VM_ARGS -jar $TEMP_FILE $ARGS \"$@\" < /dev/stdin &\n"
+      + "CHILD_PID=$!\n"
+      + "wait $CHILD_PID\n";
 
   final JavaHandler handler;
 

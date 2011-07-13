@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/cli/cli.iml" filepath="$PROJECT_DIR$/cli/cli.iml" />
       <module fileurl="file://$PROJECT_DIR$/external/one_jar/boot/external-one_jar-boot.iml" filepath="$PROJECT_DIR$/external/one_jar/boot/external-one_jar-boot.iml" />
       <module fileurl="file://$PROJECT_DIR$/foo/foo.iml" filepath="$PROJECT_DIR$/foo/foo.iml" />
       <module fileurl="file://$PROJECT_DIR$/foo/bar/foo-bar.iml" filepath="$PROJECT_DIR$/foo/bar/foo-bar.iml" />
