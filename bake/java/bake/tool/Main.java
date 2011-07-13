@@ -80,6 +80,8 @@ public class Main {
 
   static void exit(int code) {
     Log.i("Done in %dms.", (System.nanoTime() - start) / 1000000);
+    System.out.flush();
+    System.err.flush();
     System.exit(code);
   }
 

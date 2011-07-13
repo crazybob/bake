@@ -24,13 +24,16 @@ abstract class ExecutableJar {
 
   private static final String SCRIPT_PREFIX = "#!/bin/sh\n"
       + "set -u\n" // Require variables to be set.
-      + "set -e\n" // Exit on error.
-      + "TEMP_FILE=`mktemp -t bake.XXXXXXXXXX`\n"
+      + "TEMP_FILE=`mktemp -t bake.XXXXXXXXXX` || exit 1\n" // Exit if temp file creation fails.
       + "CHILD_PID=0\n"
       + "function exitChild() {\n"
-      + "  [ $CHILD_PID = 0 ] && exit 1\n" // CHILD_PID = 0 if child hasn't started yet.
-      + "  wait $CHILD_PID\n"
-      + "  EXIT_CODE=$?\n"
+      + "  if [ $CHILD_PID = 0 ]\n"
+      + "  then\n"
+      + "    EXIT_CODE=1\n" // Child hasn't started yet.
+      + "  else\n"
+      + "    wait $CHILD_PID\n"
+      + "    EXIT_CODE=$?\n"
+      + "  fi\n"
       + "  rm -f $TEMP_FILE\n"
       + "  exit $EXIT_CODE\n"
       + "}\n"
