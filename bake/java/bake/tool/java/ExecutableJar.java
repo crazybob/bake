@@ -26,14 +26,21 @@ abstract class ExecutableJar {
       + "set -u\n" // Require variables to be set.
       + "set -e\n" // Exit on error.
       + "TEMP_FILE=`mktemp -t bake.XXXXXXXXXX`\n"
-      + "trap 'EXIT_CODE=$?; rm -f $TEMP_FILE; exit $EXIT_CODE;' EXIT\n"
-      + "trap 'rm -f $TEMP_FILE; kill 0; wait $CHILD_PID; exit;' INT TERM\n"
+      + "CHILD_PID=0\n"
+      + "function exitChild() {\n"
+      + "  [ $CHILD_PID = 0 ] && exit 1\n" // CHILD_PID = 0 if child hasn't started yet.
+      + "  wait $CHILD_PID\n"
+      + "  EXIT_CODE=$?\n"
+      + "  rm -f $TEMP_FILE\n"
+      + "  exit $EXIT_CODE\n"
+      + "}\n"
+      + "trap 'kill 0; exitChild' INT TERM\n"
       + "cat <<\"EOF\" | openssl enc -d -base64 > $TEMP_FILE\n";
 
   private static final String SCRIPT_SUFFIX = "EOF\n"
       + "java $VM_ARGS -jar $TEMP_FILE $ARGS \"$@\" < /dev/stdin &\n"
       + "CHILD_PID=$!\n"
-      + "wait $CHILD_PID\n";
+      + "exitChild\n";
 
   final JavaHandler handler;
 
