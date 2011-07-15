@@ -37,6 +37,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
+import static bake.tool.Files.rename;
 import static bake.tool.java.ExternalDependency.isExternal;
 import static bake.tool.java.WalkStrategy.INCLUDING_TESTS;
 
@@ -49,7 +50,7 @@ import static bake.tool.java.WalkStrategy.INCLUDING_TESTS;
  * @author Bob Lee (bob@squareup.com)
  */
 class Intellij {
-  
+
   private static final String MODULE = "module";
   private static final String TEST_SCOPE = "TEST";
   private static final String RUNTIME_SCOPE = "RUNTIME";
@@ -126,7 +127,7 @@ class Intellij {
     // Do it just once total.
     File temp = new File(modulesXmlFile.getPath() + ".temp");
     Files.write(newXml, temp, Charsets.UTF_8);
-    temp.renameTo(modulesXmlFile);
+    rename(temp, modulesXmlFile);
     Log.i("Updated %s.", repository.relativePath(modulesXmlFile));
   }
 
@@ -189,7 +190,7 @@ class Intellij {
       // if you run something through IntelliJ.
       writeResourceDirectories(out, java.resources(), null);
       writeResourceDirectories(out, java.testResources(), "TEST");
- 
+
       // Add internal module dependencies.
       writeModuleDependencies(out, handler.mainDependencies(), null);
       writeModuleDependencies(out, handler.testDependencies(), TEST_SCOPE);
@@ -226,9 +227,7 @@ class Intellij {
       // Commit.
       out.close();
       File moduleXml = moduleXmlFor(module);
-      if (!temp.renameTo(moduleXml)) {
-        throw new IOException("Rename failed.");
-      }
+      rename(temp, moduleXml);
       Log.v("Wrote %s.", repository.relativePath(moduleXml));
     } finally {
       fout.close();
