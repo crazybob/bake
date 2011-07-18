@@ -105,13 +105,15 @@ class OneJar extends ExecutableJar {
     handler.walk(new JavaTask() {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         Module module = handler.module;
-        String baseName = "internal-" + module.name();
-        // Skip main classes jar. We store this in main/main.jar.
-        if (module != handler.module) {
-          files.put("lib/" + baseName + ".jar", handler.classesJar());
-        }
-        for (File jar : handler.jars()) {
-          files.put("lib/" + baseName + "-" + jar.getName(), jar);
+        if (!OneJar.this.handler.internalProvidedDependencies().contains(module)) {
+          String baseName = "internal-" + module.name();
+          // Skip main classes jar. We store this in main/main.jar.
+          if (module != handler.module) {
+            files.put("lib/" + baseName + ".jar", handler.classesJar());
+          }
+          for (File jar : handler.jars()) {
+            files.put("lib/" + baseName + "-" + jar.getName(), jar);
+          }
         }
       }
 
@@ -183,6 +185,16 @@ class OneJar extends ExecutableJar {
     List<String> classPathJars = Lists.newArrayList();
     for (ExternalArtifact.Id id : handler.externalProvidedDependencies()) {
       classPathJars.add(id.name + ".jar");
+    }
+
+    for (Module module : handler.internalProvidedDependencies()) {
+      try {
+        for (File jar : module.javaHandler().jars()) {
+          classPathJars.add(jar.getName());
+        }
+      } catch (BakeError bakeError) {
+        Log.w("Problem accessing javaHandler for module %s: %s", module.name(), bakeError);
+      }
     }
 
     if (!classPathJars.isEmpty()) {

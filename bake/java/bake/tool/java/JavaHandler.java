@@ -250,19 +250,45 @@ public class JavaHandler implements Handler<Java> {
     return all;
   }
 
+  private Set<Module> internalProvidedDependencies;
+
+  /**
+   * Returns all providedDependencies which are not external.
+   */
+  public Set<Module> internalProvidedDependencies() {
+    if (internalProvidedDependencies == null) {
+      internalProvidedDependencies = Sets.newHashSet();
+      for (String dependency : java.providedDependencies()) {
+        if (!ExternalDependency.isExternal(dependency)) {
+          try {
+            internalProvidedDependencies.add(this.repository.moduleByName(dependency));
+          } catch (BakeError bakeError) {
+            Log.e("Bake error resolving providedDependency %s: %s", dependency, bakeError);
+          } catch (IOException e) {
+            Log.e("IOException resolving providedDependency %s: %s", dependency, e);
+          }
+        }
+      }
+    }
+
+    return internalProvidedDependencies;
+  }
+
   private Set<ExternalArtifact.Id> externalProvidedDependencies;
 
   /**
-   * Returns all externalProvidedDependencies which are external.
+   * Returns all providedDependencies which are external.
    */
   public Set<ExternalArtifact.Id> externalProvidedDependencies() {
     if (externalProvidedDependencies == null) {
       externalProvidedDependencies = Sets.newHashSet();
       for (String dependency : java.providedDependencies()) {
-        try {
-          externalProvidedDependencies.add(ExternalDependency.parse(dependency).jarId());
-        } catch (BakeError bakeError) {
-          Log.w("Currently, only external dependencies are supported for providedDependencies");
+        if (ExternalDependency.isExternal(dependency)) {
+          try {
+            externalProvidedDependencies.add(ExternalDependency.parse(dependency).jarId());
+          } catch (BakeError bakeError) {
+            Log.w("Failed to parse external providedDependency %s: %s", dependency, bakeError);
+          }
         }
       }
       externalProvidedDependencies = Collections.unmodifiableSet(externalProvidedDependencies);
