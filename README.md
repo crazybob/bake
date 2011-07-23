@@ -136,8 +136,6 @@ jump to files by name much easier.
      +- java      - Java source
      +- resources - Resources
      +- tests     - Tests for the foo module.
-         |
-         +- tests.bake - Test Bake file
          +- java       - Test Java source
          +- resources  - Test resources
 
