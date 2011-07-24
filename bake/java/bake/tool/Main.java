@@ -80,6 +80,10 @@ public class Main {
 
   static void exit(int code) {
     Log.i("Done in %dms.", (System.nanoTime() - start) / 1000000);
+    // Note: PrintStream.flush() seems to flush the underlying stream but not the buffers in
+    // PrintStream.
+    System.out.close();
+    System.err.close();
     System.exit(code);
   }
 

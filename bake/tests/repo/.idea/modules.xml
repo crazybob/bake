@@ -2,11 +2,14 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/cli/cli.iml" filepath="$PROJECT_DIR$/cli/cli.iml" />
       <module fileurl="file://$PROJECT_DIR$/external/one_jar/boot/external-one_jar-boot.iml" filepath="$PROJECT_DIR$/external/one_jar/boot/external-one_jar-boot.iml" />
       <module fileurl="file://$PROJECT_DIR$/foo/foo.iml" filepath="$PROJECT_DIR$/foo/foo.iml" />
       <module fileurl="file://$PROJECT_DIR$/foo/bar/foo-bar.iml" filepath="$PROJECT_DIR$/foo/bar/foo-bar.iml" />
       <module fileurl="file://$PROJECT_DIR$/foo/bar/baz/foo-bar-baz.iml" filepath="$PROJECT_DIR$/foo/bar/baz/foo-bar-baz.iml" />
       <module fileurl="file://$PROJECT_DIR$/foo/bar/test_support/foo-bar-test_support.iml" filepath="$PROJECT_DIR$/foo/bar/test_support/foo-bar-test_support.iml" />
+      <module fileurl="file://$PROJECT_DIR$/return1/return1.iml" filepath="$PROJECT_DIR$/return1/return1.iml" />
+      <module fileurl="file://$PROJECT_DIR$/sleep/sleep.iml" filepath="$PROJECT_DIR$/sleep/sleep.iml" />
       <module fileurl="file://$PROJECT_DIR$/tee/tee.iml" filepath="$PROJECT_DIR$/tee/tee.iml" />
     </modules>
   </component>

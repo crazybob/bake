@@ -24,15 +24,26 @@ abstract class ExecutableJar {
 
   private static final String SCRIPT_PREFIX = "#!/bin/sh\n"
       + "set -u\n" // Require variables to be set.
-      + "set -e\n" // Exit on error.
-      + "tempfile=`mktemp -t bake.XXXXXXXXXX`\n"
-      + "trap \"rm -f $tempfile; exit\" EXIT\n"
-      + "trap \"rm -f $tempfile; kill 0; false; exit\" INT TERM\n"
-      + "cat <<\"EOF\" | openssl enc -d -base64 > $tempfile\n";
+      + "TEMP_FILE=`mktemp -t bake.XXXXXXXXXX` || exit 1\n" // Exit if temp file creation fails.
+      + "CHILD_PID=0\n"
+      + "function exitChild() {\n"
+      + "  if [ $CHILD_PID = 0 ]\n"
+      + "  then\n"
+      + "    EXIT_CODE=1\n" // Child hasn't started yet.
+      + "  else\n"
+      + "    wait $CHILD_PID\n"
+      + "    EXIT_CODE=$?\n"
+      + "  fi\n"
+      + "  rm -f $TEMP_FILE\n"
+      + "  exit $EXIT_CODE\n"
+      + "}\n"
+      + "trap 'kill 0; exitChild' INT TERM\n"
+      + "cat <<\"EOF\" | openssl enc -d -base64 > $TEMP_FILE\n";
 
   private static final String SCRIPT_SUFFIX = "EOF\n"
-      + "java $VM_ARGS -jar $tempfile $ARGS \"$@\" &\n"
-      + "wait\n";
+      + "java $VM_ARGS -jar $TEMP_FILE $ARGS \"$@\" < /dev/stdin &\n"
+      + "CHILD_PID=$!\n"
+      + "exitChild\n";
 
   final JavaHandler handler;
 
