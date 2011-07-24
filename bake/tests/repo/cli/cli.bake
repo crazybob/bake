@@ -1,0 +1,9 @@
+@bake.Java(
+  mainClass = "Cli",
+  dependencies = {
+      "external:com.google.guava/guava@r09"
+  },
+  testDependencies = {
+      "external:junit/junit@4.8.2"
+  }
+) module cli;

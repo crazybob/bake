@@ -1,0 +1,6 @@
+@bake.Java(
+  mainClass = "Return1",
+  testDependencies = {
+      "external:junit/junit@4.8.2"
+  }
+) module return1;

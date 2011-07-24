@@ -551,9 +551,9 @@ public class JavaHandler implements Handler<Java> {
     try {
       int result = process.waitFor();
       if (result == 0) {
-        Log.i("%s passed.", module.name());
+        Log.i("Tests for '%s' passed.", module.name());
       } else {
-        throw new BakeError(module.name() + " failed.");
+        throw new BakeError("Tests for '" + module.name() + "' failed.");
       }
     } catch (InterruptedException e) {
       throw new AssertionError(e);

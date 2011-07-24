@@ -6,7 +6,9 @@ import com.sun.jersey.core.spi.scanning.PackageNamesScanner;
 import com.sun.jersey.core.spi.scanning.ScannerListener;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 
 public class Foo {
@@ -47,11 +49,22 @@ public class Foo {
     if (!new Bar().lower("HELLO, WORLD!").equals("hello, world!")) throw new AssertionError();
   }
 
-  private static void testClasspathScanning() {
+  private static void testClasspathScanning() throws IOException {
+    // Note: We break down what PackageNameScanner does so we can identify where exactly it fails.
+
+    // First check that we can look up directory resources.
+    String packageName = "bake.example.foo";
+    Enumeration<URL> resources = Foo.class.getClassLoader().getResources(
+        packageName.replace('.', '/'));
+    if (!resources.hasMoreElements()) {
+      throw new AssertionError("Expected directory resources.");
+    }
+
+    // Now test the real thing.
     final List<String> names = new ArrayList<String>();
     PackageNamesScanner scanner = new PackageNamesScanner(
         Foo.class.getClassLoader(),
-        new String[]{ "bake.example.foo" });
+        new String[] { packageName });
     scanner.scan(new ScannerListener() {
       public boolean onAccept(String name) {
         names.add(name);
