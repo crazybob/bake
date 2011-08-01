@@ -25,6 +25,7 @@ public class Files {
    * Renames from to to. Throws an exception if the rename fails.
    */
   public static void rename(File from, File to) throws IOException {
+    if (OS.windows() && to.exists()) to.delete();
     if (!from.renameTo(to)) {
       throw new IOException(
           "Failed to rename " + from + " to " + to + ".");

@@ -5,6 +5,7 @@ import bake.tool.BakeError;
 import bake.tool.Files;
 import bake.tool.Log;
 import bake.tool.Module;
+import bake.tool.OS;
 import bake.tool.Profile;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
@@ -91,11 +92,13 @@ class OneJar extends ExecutableJar {
       fout.close();
     }
 
-    Log.v("chmod +x " + temp.getPath());
-    Process chmod = new ProcessBuilder("chmod", "+x", temp.getPath())
-        .redirectErrorStream(true)
-        .start();
-    ByteStreams.copy(chmod.getInputStream(), System.out);
+    if (!OS.windows()) {
+      Log.v("chmod +x " + temp.getPath());
+      Process chmod = new ProcessBuilder("chmod", "+x", temp.getPath())
+          .redirectErrorStream(true)
+          .start();
+      ByteStreams.copy(chmod.getInputStream(), System.out);
+    }
 
     Files.rename(temp, oneJarFile);
   }
