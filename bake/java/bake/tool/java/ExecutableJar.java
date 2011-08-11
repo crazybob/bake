@@ -3,6 +3,7 @@ package bake.tool.java;
 
 import bake.tool.BakeError;
 import bake.tool.Log;
+import bake.tool.Module;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
@@ -128,5 +129,29 @@ abstract class ExecutableJar {
     // TODO: More escaping?
     for (String arg : args) filtered.add("\"" + arg + "\"");
     return Joiner.on(' ').join(filtered);
+  }
+
+  protected List<String> getClassPathStrings() {
+    List<String> classPathJars = Lists.newArrayList();
+    for (ExternalArtifact.Id id : handler.externalProvidedDependencies()) {
+      classPathJars.add(id.name + ".jar");
+    }
+
+    for (Module module : handler.internalProvidedDependencies()) {
+      try {
+        for (File jar : module.javaHandler().jars()) {
+          classPathJars.add(jar.getName());
+        }
+
+        try {
+          File jar = module.javaHandler().executableJar.jarFile();
+          classPathJars.add(jar.getName());
+        } catch (IOException ioe) {
+        }
+      } catch (BakeError bakeError) {
+        Log.w("Problem accessing javaHandler for module %s: %s", module.name(), bakeError);
+      }
+    }
+    return classPathJars;
   }
 }

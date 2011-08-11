@@ -7,7 +7,6 @@ import bake.tool.Log;
 import bake.tool.Module;
 import bake.tool.Profile;
 import com.google.common.base.Joiner;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 
@@ -39,7 +38,6 @@ class OneJar extends ExecutableJar {
    * If we prepend a jar with this script, that jar will be directly
    * executable.
    */
-
   OneJar(JavaHandler handler) {
     super(handler);
   }
@@ -105,13 +103,15 @@ class OneJar extends ExecutableJar {
     handler.walk(new JavaTask() {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
         Module module = handler.module;
-        String baseName = "internal-" + module.name();
-        // Skip main classes jar. We store this in main/main.jar.
-        if (module != handler.module) {
-          files.put("lib/" + baseName + ".jar", handler.classesJar());
-        }
-        for (File jar : handler.jars()) {
-          files.put("lib/" + baseName + "-" + jar.getName(), jar);
+        if (!OneJar.this.handler.internalProvidedDependencies().contains(module)) {
+          String baseName = "internal-" + module.name();
+          // Skip main classes jar. We store this in main/main.jar.
+          if (module != handler.module) {
+            files.put("lib/" + baseName + ".jar", handler.classesJar());
+          }
+          for (File jar : handler.jars()) {
+            files.put("lib/" + baseName + "-" + jar.getName(), jar);
+          }
         }
       }
 
@@ -180,11 +180,7 @@ class OneJar extends ExecutableJar {
     attributes.put(new Attributes.Name("One-Jar-URL-Factory"),
         "com.simontuffs.onejar.JarClassLoader$OneJarURLFactory");
 
-    List<String> classPathJars = Lists.newArrayList();
-    for (ExternalArtifact.Id id : handler.externalProvidedDependencies()) {
-      classPathJars.add(id.name + ".jar");
-    }
-
+    List<String> classPathJars = getClassPathStrings();
     if (!classPathJars.isEmpty()) {
       attributes.put(new Attributes.Name("Class-Path"), Joiner.on(" ").join(classPathJars));
     }

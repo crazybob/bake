@@ -1,0 +1,17 @@
+@bake.Java(
+  dependencies = {
+    "sleep",
+    "tee",
+    "external:commons-lang/commons-lang"
+  },
+  providedDependencies = {
+    "sleep",
+    "tee",
+    "external:commons-lang/commons-lang"
+  },
+  testDependencies = {
+    "external:com.google.guava/guava@r09",
+    "external:junit/junit@4.8.2"
+  },
+  mainClass = "bake.example.provided.Provided"
+) module provided;
