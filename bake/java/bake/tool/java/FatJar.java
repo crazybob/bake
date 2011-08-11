@@ -4,6 +4,7 @@ package bake.tool.java;
 import bake.tool.BakeError;
 import bake.tool.Files;
 import bake.tool.Log;
+import bake.tool.Module;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -49,7 +50,9 @@ class FatJar extends ExecutableJar {
 
     handler.walk(new JavaTask() {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
-        if (handler != FatJar.this.handler) {
+        Module module = handler.module;
+        if (handler != FatJar.this.handler &&
+            !FatJar.this.handler.internalProvidedDependencies().contains(module)) {
           jars.add(handler.classesJar());
           for (File jar : handler.jars()) {
             jars.add(jar);
@@ -125,11 +128,7 @@ class FatJar extends ExecutableJar {
 
     attributes.put(new Attributes.Name("Main-Class"), handler.java.mainClass());
 
-    List<String> classPathJars = Lists.newArrayList();
-    for (ExternalArtifact.Id id : handler.externalProvidedDependencies()) {
-      classPathJars.add(id.name + ".jar");
-    }
-
+    List<String> classPathJars = getClassPathStrings();
     if (!classPathJars.isEmpty()) {
       attributes.put(new Attributes.Name("Class-Path"), Joiner.on(" ").join(classPathJars));
     }
