@@ -1,29 +1,44 @@
 // Copyright 2011 Square, Inc.
 package bake.tool;
 
-import com.google.common.io.*;
-import junit.framework.TestCase;
+import com.google.common.io.ByteStreams;
+import com.google.common.io.Files;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.util.Enumeration;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Builds "foo" in the test repo.
  *
  * @author Bob Lee (bob@squareup.com)
  */
-public class BakeTest extends TestCase {
+public class BakeTest {
 
-  @Override protected void setUp() throws Exception {
-    System.err.println("*** STARTING " + getName());
+  @Before
+  public void setUp() throws Exception {
+    System.err.println("*** STARTING " + this.getClass().getName());
   }
 
-  @Override protected void tearDown() throws Exception {
-    System.err.println("*** FINISHED " + getName());
+  @After
+  public void tearDown() throws Exception {
+    System.err.println("*** FINISHED " + this.getClass().getName());
   }
 
+  @Test
   public void testRepo() throws IOException, InterruptedException {
     clean();
 
@@ -81,6 +96,7 @@ public class BakeTest extends TestCase {
       com.google.common.io.Files.deleteRecursively(out);
   }
 
+  @Test
   public void testKill() throws IOException, InterruptedException {
     Process p = new ProcessBuilder(
         new File("../out/bin/bake").getCanonicalPath(), "-v", "sleep")
@@ -99,6 +115,7 @@ public class BakeTest extends TestCase {
     assertTrue("> 5s elapsed.", System.currentTimeMillis() - start < 5000);
   }
 
+  @Test
   public void testExitCode() throws IOException, InterruptedException {
     Process p = new ProcessBuilder(
         new File("../out/bin/bake").getCanonicalPath(), "-v", "return1")
@@ -114,6 +131,7 @@ public class BakeTest extends TestCase {
     assertEquals(1, p.waitFor()); // != 0
   }
 
+  @Test
   public void testStandardInputRedirection() throws IOException, InterruptedException {
     Process p = new ProcessBuilder(
         new File("../out/bin/bake").getCanonicalPath(), "-v", "cli")
