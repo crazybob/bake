@@ -1,9 +1,4 @@
 @bake.Java(
-  dependencies = {
-    "sleep",
-    "tee",
-    "external:commons-lang/commons-lang"
-  },
   providedDependencies = {
     "sleep",
     "tee",

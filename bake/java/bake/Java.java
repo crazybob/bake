@@ -30,10 +30,9 @@ public @interface Java {
   String[] dependencies() default {};
 
   /**
-   * Identifies dependencies on other Java code by module name. Included
-   * during compilation and at run time.
+   * Transitively excludes dependencies.
    */
-  String[] providedDependencies() default {};
+  String[] excludes() default {};
 
   // TODO: Support inheriting the version from dependencies().
 
@@ -116,11 +115,6 @@ public @interface Java {
    * Working directory to use when running tests.
    */
   String testWorkingDirectory() default "";
-
-  /**
-   * Build a OneJar output instead of FatJar. This is necessary if any dependencies are signed.
-   */
-  boolean oneJar() default false;
 
 // TODO: Support this:
 //  /**

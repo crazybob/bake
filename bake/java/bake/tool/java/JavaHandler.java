@@ -59,7 +59,7 @@ public class JavaHandler implements Handler<Java> {
     this.intellij = intellij;
     this.compilerProvider = compilerProvider;
     this.externalDependencies = externalDependencies;
-    this.executableJar = java.oneJar() ? new OneJar(this) : new FatJar(this);
+    this.executableJar = java.oneJar() ? new OneJarHandler(this) : new FatJarHandler(this);
 
     externalDependencies.setHandler(this);
     intellij.setHandler(this);
