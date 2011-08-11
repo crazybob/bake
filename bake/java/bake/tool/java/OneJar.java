@@ -7,7 +7,6 @@ import bake.tool.Log;
 import bake.tool.Module;
 import bake.tool.Profile;
 import com.google.common.base.Joiner;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 
@@ -39,7 +38,6 @@ class OneJar extends ExecutableJar {
    * If we prepend a jar with this script, that jar will be directly
    * executable.
    */
-
   OneJar(JavaHandler handler) {
     super(handler);
   }
@@ -182,21 +180,7 @@ class OneJar extends ExecutableJar {
     attributes.put(new Attributes.Name("One-Jar-URL-Factory"),
         "com.simontuffs.onejar.JarClassLoader$OneJarURLFactory");
 
-    List<String> classPathJars = Lists.newArrayList();
-    for (ExternalArtifact.Id id : handler.externalProvidedDependencies()) {
-      classPathJars.add(id.name + ".jar");
-    }
-
-    for (Module module : handler.internalProvidedDependencies()) {
-      try {
-        for (File jar : module.javaHandler().jars()) {
-          classPathJars.add(jar.getName());
-        }
-      } catch (BakeError bakeError) {
-        Log.w("Problem accessing javaHandler for module %s: %s", module.name(), bakeError);
-      }
-    }
-
+    List<String> classPathJars = getClassPathStrings();
     if (!classPathJars.isEmpty()) {
       attributes.put(new Attributes.Name("Class-Path"), Joiner.on(" ").join(classPathJars));
     }

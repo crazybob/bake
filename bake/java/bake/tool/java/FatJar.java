@@ -128,23 +128,7 @@ class FatJar extends ExecutableJar {
 
     attributes.put(new Attributes.Name("Main-Class"), handler.java.mainClass());
 
-    List<String> classPathJars = Lists.newArrayList();
-    for (ExternalArtifact.Id id : handler.externalProvidedDependencies()) {
-      classPathJars.add(id.name + ".jar");
-    }
-
-
-    for (Module module : handler.internalProvidedDependencies()) {
-      try {
-        for (File jar : module.javaHandler().jars()) {
-          classPathJars.add(jar.getName());
-        }
-      } catch (BakeError bakeError) {
-        Log.w("Problem accessing javaHandler for module %s: %s", module.name(), bakeError);
-      }
-    }
-
-
+    List<String> classPathJars = getClassPathStrings();
     if (!classPathJars.isEmpty()) {
       attributes.put(new Attributes.Name("Class-Path"), Joiner.on(" ").join(classPathJars));
     }
