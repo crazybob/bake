@@ -44,23 +44,6 @@ public @interface Java {
   String[] exports() default {};
 
   /**
-   * Identifies the main class. If set, Bake will be an executable jar
-   * containing all of this module's dependencies.
-   */
-  String mainClass() default "";
-
-  /**
-   * Default arguments to pass from the command line. Requires
-   * {@link #mainClass()}.
-   */
-  String[] args() default {};
-
-  /**
-   * VM arguments. Requires {@link #mainClass()}.
-   */
-  String[] vmArgs() default { "-Xmx1G" };
-
-  /**
    * Pre-compiled jars. Relative to module directory.
    */
   String[] jars() default {};
