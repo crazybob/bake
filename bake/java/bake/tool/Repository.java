@@ -120,13 +120,13 @@ import java.util.regex.Pattern;
   /**
    * Bakes the modules at the given paths.
    */
-  public void bakePaths(Iterable<String> paths) throws BakeError, IOException {
+  public void bakePaths(Iterable<String> paths, boolean runTests) throws BakeError, IOException {
     List<Module> modules = new ArrayList<Module>();
     for (String path : paths) {
       Log.v("Resolving %s...", path);
       modules.add(moduleByName(toModuleName(new File(path))));
     }
-    for (Module module : modules) module.bake();
+    for (Module module : modules) module.bake(runTests);
   }
 
   /** Returns true if file is the root of a Bake repository. */
@@ -170,14 +170,14 @@ import java.util.regex.Pattern;
   /**
    * Recursively finds all .bake files and builds them.
    */
-  public void bakeAll() throws BakeError, IOException {
+  public void bakeAll(boolean runTests) throws BakeError, IOException {
     Set<File> bakeFiles = Sets.newHashSet();
     findBakeFiles(root, bakeFiles);
     List<Module> modules = new ArrayList<Module>();
     for (File file : bakeFiles) {
       modules.add(moduleByName(toModuleName(file)));
     }
-    for (Module module : modules) module.bake();
+    for (Module module : modules) module.bake(runTests);
   }
 
   private void findBakeFiles(File directory, Set<File> bakeFiles) {

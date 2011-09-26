@@ -42,12 +42,12 @@ public class Module {
   }
 
   /** Bakes this module. Delegates to each handler. */
-  public void bake() throws IOException, BakeError {
+  public void bake(boolean runTests) throws IOException, BakeError {
     Log.i("Baking %s...", name);
     for (Handler handler : handlers.values()) {
       Log.i("Handling @%s...",
           handler.annotation().annotationType().getSimpleName());
-      handler.bake();
+      handler.bake(runTests);
     }
   }
 

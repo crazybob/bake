@@ -15,5 +15,5 @@ public interface Handler<A extends Annotation> {
   A annotation();
 
   /** Bakes the associated module. */
-  void bake() throws IOException, BakeError;
+  void bake(boolean runTests) throws IOException, BakeError;
 }

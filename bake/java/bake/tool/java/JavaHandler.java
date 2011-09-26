@@ -79,7 +79,7 @@ public class JavaHandler implements Handler<Java> {
     return module.outputDirectory("test-classes");
   }
 
-  public void bake() throws IOException, BakeError {
+  public void bake(boolean runTests) throws IOException, BakeError {
     // Resolve external dependencies.
     walk(new JavaTask() {
       @Override public void execute(JavaHandler handler) throws BakeError, IOException {
@@ -105,15 +105,17 @@ public class JavaHandler implements Handler<Java> {
 
     if (!java.mainClass().equals("")) executableJar.bake();
 
-    walk(new JavaTask() {
-      @Override public void execute(JavaHandler handler) throws BakeError, IOException {
-        handler.runTests();
-      }
+    if (runTests) {
+      walk(new JavaTask() {
+        @Override public void execute(JavaHandler handler) throws BakeError, IOException {
+          handler.runTests();
+        }
 
-      @Override public String description() {
-        return "testing";
-      }
-    }, INCLUDING_TESTS);
+        @Override public String description() {
+          return "testing";
+        }
+      }, INCLUDING_TESTS);
+    }
   }
 
   /**

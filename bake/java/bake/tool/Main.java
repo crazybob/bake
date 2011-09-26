@@ -52,6 +52,12 @@ public class Main {
       Repository repo = new Repository.Builder()
           .diagnosticListener(new CliListener())
           .build();
+      boolean runTests = true;
+
+      if (args.get(0).equals("--skiptests") && args.size() >= 2) {
+        runTests = false;
+        args = args.subList(1, args.size());
+      }
 
       if (args.get(0).equals("init-java")) {
         if (args.size() != 2) {
@@ -61,9 +67,9 @@ public class Main {
 
         initializeJavaModule(repo, args.get(1));
       } else if (args.get(0).equals("all")) {
-        repo.bakeAll();
+        repo.bakeAll(runTests);
       } else {
-        repo.bakePaths(args);
+        repo.bakePaths(args, runTests);
       }
     } catch (Exception e) {
       @SuppressWarnings("ThrowableResultOfMethodCallIgnored")

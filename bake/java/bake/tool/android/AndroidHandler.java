@@ -29,10 +29,10 @@ public class AndroidHandler implements Handler<Android> {
     return android;
   }
 
-  public void bake() throws IOException, BakeError {
+  public void bake(boolean runTests) throws IOException, BakeError {
     // TODO: Process resources.
 
-    javaHandler.bake();
+    javaHandler.bake(runTests);
 
     // TODO: Make APK.
   }
