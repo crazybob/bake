@@ -1,22 +1,28 @@
+Before open sourcing:
+
+- Bake modules dynamically import Bake handlers using standard dep mechanism.
+- Bake modules can exclude transitive dependencies.
+- Fat jars and One-Jar are implemented as a separate annotation/handler.
+- Fat jars and One-Jar can exclude dependencies.
+- Bake uses Aether instead of Ivy.
+- Wrapper scripts no longer write temp jars. They use exec.
+- Bake generates Javadocs.
+- IntelliJ can jump to source for Bake annotations.
+- Bake automatically updates itself without needing to be checked into Git.
+- Tests are implemented as a separate annotation/handler (@JUnit).
+- Bake rebuilds jars when you remove dependencies. Use SHAs of the contents.
+- Bake generates Maven-compatible artifacts.
+  - Tell Bake the version when building (so it can generate a pom).
+  - Use "snapshot" otherwise.
+- A script migrates .pom to .bake for existing projects.
+
+After open sourcing:
+
+- Tests can run against the fat jar.
+- Bake uploads Maven artifacts.
 - Instead of building and running everything, build and test only the
   modules that were affected by your change. Diff against git master to
   determine what changed.
-- Concurrent compilation.
-- Auto-update Bake (just check it into SC?)
-- Support bake {module-name}.
-- Support dynamically loading bake annotations and handler classes.
-  - Use Bake's standard dependency scheme. For example, would could have:
-    com.mycompany.MyAnnotation=mybakemodule
-- Generate Javadocs.
-- Support git submodules.
-- Build and test everything that depends on code you changed.
-- Generate Maven-compatible artifacts.
-  - Tell Bake the version when building (so it can generate a pom).
-  - Use "snapshot" otherwise.
-- Verifies SDK of dependencies is compatible.
-- Don't allow checkin until the tests have been run.
-  - Hash differences from master. Write hash after tests pass.
-- Download source code for transitive deps
-  (https://issues.apache.org/jira/browse/IVY-1003)
-- Detect removed files and rebuild accordingly.
-- Create .bake file from POM.
+- Bake automatically checks out Git submodules based on dependency graph.
+- Bake verifies SDK of dependencies is compatible.
+- Bake downloads source code for transitive deps (https://issues.apache.org/jira/browse/IVY-1003)
